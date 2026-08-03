@@ -6,6 +6,10 @@ Low-latency PS→PL gain/weight bridge for the PandA LQR controller.
 
 A standalone place to test core features before forking PandABlocks-FPGA/server.
 
+## Architecture
+
+optimsier core -> quantiser / encoder -> transportation.
+
 ## Environment
 
 Containerised C++26 (GCC 15 / Clang, `-std=c++2c`).
@@ -13,9 +17,7 @@ Containerised C++26 (GCC 15 / Clang, `-std=c++2c`).
 ## Build & test
 
 ```sh
-./dev 'cmake --preset asan'
-./dev 'cmake --build build/asan'
-./dev 'ctest --preset asan'
+`cmake --build build/asan && ctest --preset asan --output-on-failure`
 ```
 
 | preset  | purpose |
