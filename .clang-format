@@ -1,0 +1,14 @@
+---
+BasedOnStyle: LLVM
+Standard: Latest
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+PointerAlignment: Left
+ReferenceAlignment: Left
+AlignAfterOpenBracket: Align
+BinPackParameters: false
+AllowShortFunctionsOnASingleLine: Empty
+SpaceAfterTemplateKeyword: true
+IncludeBlocks: Regroup

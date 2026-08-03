@@ -1,0 +1,52 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        { "name": "debug", "inherits": "base", "displayName": "Debug (no sanitizer)" },
+        {
+            "name": "asan", "inherits": "base", "displayName": "Debug + AddressSanitizer",
+            "cacheVariables": { "LQR_SANITIZER": "address" }
+        },
+        {
+            "name": "tsan", "inherits": "base", "displayName": "Debug + ThreadSanitizer",
+            "cacheVariables": { "LQR_SANITIZER": "thread" }
+        },
+        {
+            "name": "ubsan", "inherits": "base", "displayName": "Debug + UBSanitizer",
+            "cacheVariables": { "LQR_SANITIZER": "undefined" }
+        },
+        {
+            "name": "release", "inherits": "base", "displayName": "Release (RelWithDebInfo)",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+        },
+        {
+            "name": "clang", "inherits": "base", "displayName": "Debug (Clang)",
+            "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
+        }
+    ],
+    "buildPresets": [
+        { "name": "debug", "configurePreset": "debug" },
+        { "name": "asan", "configurePreset": "asan" },
+        { "name": "tsan", "configurePreset": "tsan" },
+        { "name": "ubsan", "configurePreset": "ubsan" },
+        { "name": "release", "configurePreset": "release" },
+        { "name": "clang", "configurePreset": "clang" }
+    ],
+    "testPresets": [
+        { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
+        { "name": "asan", "configurePreset": "asan", "output": { "outputOnFailure": true } },
+        { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true } },
+        { "name": "ubsan", "configurePreset": "ubsan", "output": { "outputOnFailure": true } },
+        { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } }
+    ]
+}

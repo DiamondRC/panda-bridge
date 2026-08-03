@@ -1,0 +1,7 @@
+# Project-wide clangd config. Points the language server at the debug build's
+# compile_commands.json so IntelliSense matches how we actually compile.
+CompileFlags:
+  CompilationDatabase: build/debug
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict

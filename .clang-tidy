@@ -1,0 +1,14 @@
+---
+# Read by both clangd (in-editor) and the clang-tidy CLI.
+Checks: >
+  clang-analyzer-*,
+  bugprone-*,
+  concurrency-*,
+  performance-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-non-const-global-variables
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'

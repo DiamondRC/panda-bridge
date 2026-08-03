@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# Single entry point for the containerised C++26 toolchain.
+#
+#   ./dev build              build the image
+#   ./dev up                 start the persistent container (repo bind-mounted at /work)
+#   ./dev 'cmake --preset x'  run any command inside the container
+#   ./dev shell              interactive shell inside the container
+#   ./dev down               stop + remove the container
+#
+# Host-specific handling baked in:
+#   :z              SELinux relabel on the bind mount (RHEL8 enforcing)
+#   --userns=keep-id  rootless UID mapping so container-written files are ours
+set -euo pipefail
+
+IMG=lqr-bridge:dev
+NAME=lqr-dev
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+case "${1:-}" in
+    build)
+        exec podman build -t "$IMG" "$HERE/.devcontainer"
+        ;;
+    up)
+        exec podman run -d --name "$NAME" \
+            --userns=keep-id \
+            -v "$HERE:/work:z" \
+            -w /work \
+            -e HOME=/tmp \
+            "$IMG" sleep infinity
+        ;;
+    down)
+        exec podman rm -f "$NAME"
+        ;;
+    shell)
+        exec podman exec -it -w /work "$NAME" bash
+        ;;
+    "")
+        echo "usage: ./dev build | up | down | shell | '<command>'" >&2
+        exit 2
+        ;;
+    *)
+        exec podman exec -w /work "$NAME" bash -lc "$*"
+        ;;
+esac

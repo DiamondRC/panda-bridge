@@ -1,0 +1,34 @@
+{
+    "name": "lqr-bridge (C++26)",
+    "build": { "dockerfile": "Dockerfile" },
+    "workspaceFolder": "/work",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/work,type=bind",
+    "runArgs": ["--userns=keep-id", "--security-opt=label=disable"],
+    "containerEnv": { "HOME": "/tmp" },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "llvm-vs-code-extensions.vscode-clangd",
+                "ms-vscode.cmake-tools"
+            ],
+            "settings": {
+                "clangd.path": "clangd",
+                "clangd.arguments": [
+                    "--query-driver=/usr/local/bin/g++,/usr/bin/g++,/usr/bin/clang++",
+                    "--background-index",
+                    "--clang-tidy",
+                    "--header-insertion=iwyu",
+                    "--completion-style=detailed"
+                ],
+                "clangd.onConfigChanged": "restart",
+                "C_Cpp.intelliSenseEngine": "disabled",
+                "cmake.generator": "Ninja",
+                "cmake.configureOnOpen": false,
+                "editor.formatOnSave": true,
+                "[cpp]": {
+                    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+                }
+            }
+        }
+    }
+}
