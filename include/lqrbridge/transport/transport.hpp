@@ -2,16 +2,11 @@
 
 #include <concepts>
 #include <cstdint>
-#include <span>
+#include "lqrbridge/types.hpp"
 
 namespace lqr {
-
-// Device word for PandA BRAM/reg compat
-using Word = std::uint32_t;
 // Swap version tag
 using Generation = std::uint32_t;
-// Gain frame - run of words in row * N + col form.
-using Frame = std::span<const Word>;
 
 
 // Transport contract

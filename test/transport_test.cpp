@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN  // this TU provides doctest's main()
 
-#include "lqrbridge/mock_transport.hpp"
-#include "lqrbridge/transport.hpp"
+#include "lqrbridge/transport/mock_transport.hpp"
+#include "lqrbridge/transport/transport.hpp"
   
 #include <doctest/doctest.h>
 #include <array>
