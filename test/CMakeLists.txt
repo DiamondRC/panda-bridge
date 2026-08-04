@@ -12,3 +12,4 @@ endfunction()
 
 lqr_add_test(transport_test)
 lqr_add_test(fixed_point_test)
+lqr_add_test(publish_test)

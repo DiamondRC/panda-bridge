@@ -76,7 +76,12 @@ TEST_CASE("Dequantise inverts quantise within one LSB") {
 TEST_CASE("Gains enter transport and round-trip") {
     const std::array<double, 3> k{1.0, 0.5, -1.0};
     std::array<Word, 9> buf{}; // a 3x3 store, uses the first 3 slots
-    quantise_into(k, gain_q, Rounding::HalfAway, std::span{buf}.first(3));
+    quantise_into(
+        k, 
+        gain_q,
+        Rounding::HalfAway,
+        std::span{buf}.first(3)
+    );
 
     MockTransport<9> mt;
     mt.stage(std::span<const Word>{buf.data(), 3});

@@ -1,4 +1,4 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN  // this TU provides doctest's main()
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "lqrbridge/transport/mock_transport.hpp"
 #include "lqrbridge/transport/transport.hpp"
