@@ -18,13 +18,12 @@ namespace lqr {
         QFormat q,
         Rounding mode
     ) noexcept {
-        assert(std::isfinite(x) && "quantise: non-finite input");
-
         const auto lo = static_cast<double>(q.min_code());
         const auto hi = static_cast<double>(q.max_code());
         const double scaled = std::ldexp(x, q.frac);
 
-        // Saturate in float domain before rounding
+        // Saturate in float domain before rounding.
+        // Clamps inf and keeps llround/nearbyint UB free.
         const double bounded = std::isnan(scaled) ? 0.0 : 
             std::clamp(scaled, lo, hi);
 
@@ -42,12 +41,16 @@ namespace lqr {
         return std::ldexp(static_cast<double>(code), -q.frac);
     }
 
+    // Fill frame from gain buffer.
     inline void quantise_into(
         std::span<const double> gains,
         QFormat q,
         Rounding mode,
         std::span<Word> out
     ) noexcept {
+        // Enforce i/o
+        assert(gains.size() == out.size());
+
         // BRAM gains laid row-major (row*N + col)
         for (std::size_t i = 0; i < gains.size(); ++i) {
             out[i] = to_word(quantise(gains[i], q, mode));
