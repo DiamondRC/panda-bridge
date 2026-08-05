@@ -32,7 +32,18 @@
         {
             "name": "clang", "inherits": "base", "displayName": "Debug (Clang)",
             "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
-        }
+        },
+        {     
+            "name": "release-native",
+            "inherits": "base",
+            "displayName": "Release + native (benchmarks)",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "LQR_SANITIZER": "none",
+                "CMAKE_CXX_FLAGS": "-march=native",
+                "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+            }
+        } 
     ],
     "buildPresets": [
         { "name": "debug", "configurePreset": "debug" },
@@ -40,7 +51,8 @@
         { "name": "tsan", "configurePreset": "tsan" },
         { "name": "ubsan", "configurePreset": "ubsan" },
         { "name": "release", "configurePreset": "release" },
-        { "name": "clang", "configurePreset": "clang" }
+        { "name": "clang", "configurePreset": "clang" },
+        { "name": "release-native", "configurePreset": "release-native" }
     ],
     "testPresets": [
         { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },

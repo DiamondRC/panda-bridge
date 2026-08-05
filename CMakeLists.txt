@@ -30,3 +30,4 @@ add_library(lqr::bridge ALIAS lqrbridge)
 # Tests
 enable_testing()
 add_subdirectory(test)
+add_subdirectory(bench)
