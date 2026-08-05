@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lqrbridge/transport/transport.hpp"
+#include "lqrbridge/types.hpp"
 
 #include <algorithm>
 #include <array>

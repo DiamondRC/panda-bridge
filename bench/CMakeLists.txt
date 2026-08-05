@@ -8,3 +8,4 @@ function(tick_bench name)
 endfunction()
 
 tick_bench(bench_smoke)
+tick_bench(bench_quantise)
