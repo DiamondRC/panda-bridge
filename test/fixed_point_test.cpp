@@ -17,10 +17,10 @@ using lqr::quantise, lqr::dequantise, lqr::to_word, lqr::quantise_into;
 using lqr::gain_q, lqr::Rounding, lqr::Word, lqr::MockTransport;
 
 TEST_CASE("Q7.25 known codes") {
-    CHECK(quantise(1.0, gain_q, Rounding::HalfAway) == 33554432); // 2^25
-    CHECK(quantise(0.5, gain_q, Rounding::HalfAway) == 16777216); // 2^24
-    CHECK(quantise(-1.0, gain_q, Rounding::HalfAway) == -33554432);
-    CHECK(quantise(0.0, gain_q, Rounding::HalfAway) == 0);
+    CHECK(quantise<Rounding::HalfAway>(1.0, gain_q) == 33554432); // 2^25
+    CHECK(quantise<Rounding::HalfAway>(0.5, gain_q) == 16777216); // 2^24
+    CHECK(quantise<Rounding::HalfAway>(-1.0, gain_q) == -33554432);
+    CHECK(quantise<Rounding::HalfAway>(0.0, gain_q) == 0);
 }
 
 TEST_CASE("Saturation clamps to the field range") {
@@ -30,25 +30,25 @@ TEST_CASE("Saturation clamps to the field range") {
     // Range Q7.25 is ~[-64, 64)
     // (-)1e9 far outside -> should clamp to lims
     CHECK(
-        quantise(1e9, gain_q, Rounding::HalfAway) == 
+        quantise<Rounding::HalfAway>(1e9, gain_q) ==
             static_cast<std::int32_t>(gain_q.max_code())
     );
     CHECK(
-        quantise(-1e9, gain_q, Rounding::HalfAway) == 
+        quantise<Rounding::HalfAway>(-1e9, gain_q) ==
             static_cast<std::int32_t>(gain_q.min_code())
     );
 
     // +/-inf -> limits, NaN -> 0
     CHECK(
-        quantise(inf, gain_q, Rounding::HalfAway) == 
+        quantise<Rounding::HalfAway>(inf, gain_q) ==
             static_cast<std::int32_t>(gain_q.max_code())
     );
     CHECK(
-        quantise(-inf, gain_q, Rounding::HalfAway) == 
+        quantise<Rounding::HalfAway>(-inf, gain_q) ==
             static_cast<std::int32_t>(gain_q.min_code())
     );
     CHECK(
-        quantise(qnan, gain_q, Rounding::HalfAway) == 0 // Nan -> 0
+        quantise<Rounding::HalfAway>(qnan, gain_q) == 0 // Nan -> 0
     );
 }
 
@@ -56,18 +56,18 @@ TEST_CASE("Rounding modes diverge on half-LSB tie") {
     const double half_lsb = std::ldexp(1.0, -26); // scaled == 0.5
     const double two_and_half_lsb = std::ldexp(5.0, -26); // scaled == 2.5
 
-    CHECK(quantise(half_lsb, gain_q, Rounding::HalfAway) == 1); // away
-    CHECK(quantise(half_lsb, gain_q, Rounding::HalfEven) == 0); // even
+    CHECK(quantise<Rounding::HalfAway>(half_lsb, gain_q) == 1); // away
+    CHECK(quantise<Rounding::HalfEven>(half_lsb, gain_q) == 0); // even
 
-    CHECK(quantise(two_and_half_lsb, gain_q, Rounding::HalfAway) == 3); // away
-    CHECK(quantise(two_and_half_lsb, gain_q, Rounding::HalfEven) == 2); // even
+    CHECK(quantise<Rounding::HalfAway>(two_and_half_lsb, gain_q) == 3); // away
+    CHECK(quantise<Rounding::HalfEven>(two_and_half_lsb, gain_q) == 2); // even
 }
 
 TEST_CASE("Dequantise inverts quantise within one LSB") {
     const double res = std::ldexp(1.0, -gain_q.frac); // 2^-25
 
     for (const double g : {0.0, 1.0, -1.0, 0.5, -12.375, 63.9}) {
-        const auto code = quantise(g, gain_q, Rounding::HalfAway);
+        const auto code = quantise<Rounding::HalfAway>(g, gain_q);
 
         CHECK(std::abs(dequantise(code, gain_q) - g) <= res);
     }
