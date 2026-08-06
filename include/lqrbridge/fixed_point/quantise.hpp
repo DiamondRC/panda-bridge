@@ -3,6 +3,7 @@
 #include "lqrbridge/types.hpp"
 #include <cmath>
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <bit>
 #include <span>
@@ -13,21 +14,19 @@ namespace lqr {
         return std::bit_cast<Word>(code); // 2's comp bits
     }
 
+    // For keneral - value in FP, claim + round only
     template <Rounding Mode>
-    [[nodiscard]] inline std::int32_t quantise(
-        double x,
-        QFormat q
+    [[nodiscard]] inline std::int32_t quantise_scaled(
+        double scaled,
+        double lo,
+        double hi
     ) noexcept {
-        const auto lo = static_cast<double>(q.min_code());
-        const auto hi = static_cast<double>(q.max_code());
-        const double scaled = std::ldexp(x, q.frac);
-
         // Saturate in float domain before rounding.
-        // Clamps inf and keeps llround/nearbyint UB free.
-        const double bounded = std::isnan(scaled) ? 0.0 : 
-            std::clamp(scaled, lo, hi);
+        // Clamps inf and keeps llround/nearbyint UB-free.
+        const double clamped = std::min(std::max(scaled, lo), hi);
+        const double bounded = (scaled == scaled) ? clamped : 0.0; // NaN is not equal to itself
 
-        
+        // Apply rounding after FP scaling
         if constexpr (Mode == Rounding::HalfAway) {
             return static_cast<std::int32_t>(std::llround(bounded));
         } else {
@@ -35,13 +34,16 @@ namespace lqr {
         }
     }
 
-    [[nodiscard]] inline double dequantise(
-        std::int32_t code,
-        QFormat q
-    ) noexcept {
-        return std::ldexp(static_cast<double>(code), -q.frac);
-    }
+    // Public interface for testing
+    template <Rounding Mode>
+    [[nodiscard]] inline std::int32_t quantise(double x, QFormat q) noexcept {
+        const double scale = std::ldexp(1.0, q.frac);
 
+        // Call kernal to execute background logic
+        return quantise_scaled<Mode>(x * scale,
+            static_cast<double>(q.min_code()),
+            static_cast<double>(q.max_code()));
+    } 
 
     template<Rounding Mode>
     inline void quantise_into(
@@ -52,9 +54,14 @@ namespace lqr {
         // Enforce I/O
         assert(gains.size() == out.size());
 
+        // Pre-calculate the limits + scale factor
+        const double scaled = std::ldexp(1.0, q.frac);
+        const auto lo = static_cast<double>(q.min_code());
+        const auto hi = static_cast<double>(q.max_code());
+
         // BRAM gains laid row-major (row * N + col)
         for (std::size_t i = 0; i < gains.size(); ++i) {
-            out[i] = to_word(quantise<Mode>(gains[i], q));
+            out[i] = to_word(quantise_scaled<Mode>(gains[i] * scaled, lo, hi));
         }
     }
 
@@ -69,5 +76,12 @@ namespace lqr {
         } else {
             quantise_into<Rounding::HalfEven>(gains, q, out);
         }
+    }
+
+    [[nodiscard]] inline double dequantise(
+        std::int32_t code,
+        QFormat q
+    ) noexcept {
+        return std::ldexp(static_cast<double>(code), -q.frac);
     }
 }
