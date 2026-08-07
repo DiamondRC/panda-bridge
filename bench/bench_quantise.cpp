@@ -13,14 +13,17 @@
 using lqr::Word, lqr::quantise_into, lqr::Rounding, lqr::gain_q, lqr::bench::measure,
 lqr::bench::do_not_optimise;
 
-int main() {
-    // Initialise test gains
-    const std::array<double, 9> gains{
-        1.0, 0.5, -1.0,
-        3.0, 0.4, -1.2,
-        4.2, 3.1, -2.3
-    };
-    std::array<Word, 9> scratch{};
+template <std::size_t N>
+void run(const char* label) {
+    // Pre-generate test gains
+    std::array<double, N> gains{};
+
+    // Same linear-ramp spread between [-8, 8)
+    // across all runs.
+    for (std::size_t i = 0; i < N; ++i) {
+        gains[i] = -8.0 + 16.0 * (double(i) / double(N)); 
+    }
+    std::array<Word, N> scratch{};
 
     // Warm up the hot-path
     const auto s = measure(
@@ -36,24 +39,18 @@ int main() {
     );
 
     // Inspect the warming run-distribution
-    std::print("Work was: x9  p50={}  p99={}  p99.9={}  max={}  (n={})\n",
-         s.p50, s.p99, s.p999, s.max, s.n);
+    std::print("{}: x{}  p50={}  p99={}  p99.9={}  max={}  ({} cyc/elem)\n",
+        label, N, s.p50, s.p99, s.p999, s.max,
+        double(s.p50) / double(N));
+}
 
 
-    // First measurement
-    const std::uint64_t a = lqr::bench::now_cycles();
 
-    // Do some work
-    quantise_into(
-        gains, 
-        gain_q,
-        Rounding::HalfAway,
-        std::span{scratch}.first(9)
-    );
-
-    // Complete measurement
-    const std::uint64_t b = lqr::bench::now_cycles();
-
-    // These reads will have the RDTSC-P/lframe lag
-    std::print("cycles: {} -> {}  (delta {})\n", a, b, b - a);
+int main() {
+    // 9 doubles = trivial case, close to floor
+    // 900 dubs ~7.2kb => within cache
+    // 901 to check tail at demand
+    run<9>("small "); 
+    run<900>("bulk  ");
+    run<901>("bulk + tail  ");
 }

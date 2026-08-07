@@ -8,29 +8,70 @@
 #include <bit>
 #include <span>
 #include <cassert>
+#include <experimental/simd>
+#include <array>
+
+// Helper implementations
+namespace detail {
+    namespace stdx = std::experimental;
+
+    // NaN test for doubles
+    [[nodiscard]] inline double nan_to_zero(double scaled, double clamp) noexcept{
+        return (scaled == scaled) ? clamp : 0.0;
+    }
+
+    // Cross machine-architecture ABI tag to encode SIMD implementation.
+    // nan_to_zero matches a double SIMD of any ABI now,
+    // including the PandA A9 scalar fallback.
+    template <class Abi>
+    [[nodiscard]] inline stdx::simd<double, Abi>
+    nan_to_zero(
+        stdx::simd<double, Abi> scaled,
+        stdx::simd<double, Abi> clamp
+    ) noexcept {
+        // Mask assignment, compute then process result
+        stdx::where(scaled != scaled, clamp) = 0.0;
+        return clamp;
+    }
+}
 
 namespace lqr {
+    // SIMD w/ C++17 (GCC 15.3 doesn't ship C++26 std::simd)
+    namespace stdx = std::experimental;
+
+    // SIMD vector type - native = widest machine supports
+    using vd = stdx::native_simd<double>;
+
+
     [[nodiscard]] inline Word to_word(std::int32_t code) noexcept {
         return std::bit_cast<Word>(code); // 2's comp bits
     }
 
-    // For keneral - value in FP, claim + round only
-    template <Rounding Mode>
-    [[nodiscard]] inline std::int32_t quantise_scaled(
-        double scaled,
-        double lo,
-        double hi
+    // For kernal - value in FP, clamp + round only
+    // Handles the double tail as well as the SIMD body
+    template <Rounding Mode, class T>
+    [[nodiscard]] inline T quantise_scaled(
+        T scaled,
+        T lo,
+        T hi
     ) noexcept {
+        // Arguement dependant lookup will find stdx versions for SIMD whilst doubles get std.
+        // When T = double ADl finds nothing => use std
+        // T = vd uses stdx SIMD versions.
+        using std::min, std::max, std::nearbyint, std::trunc, std::copysign;
+
         // Saturate in float domain before rounding.
         // Clamps inf and keeps llround/nearbyint UB-free.
-        const double clamped = std::min(std::max(scaled, lo), hi);
-        const double bounded = (scaled == scaled) ? clamped : 0.0; // NaN is not equal to itself
+        const T clamped = min(max(scaled, lo), hi);
+        const T bounded = detail::nan_to_zero(scaled, clamped); // NaN is not equal to itself
 
         // Apply rounding after FP scaling
         if constexpr (Mode == Rounding::HalfAway) {
-            return static_cast<std::int32_t>(std::llround(bounded));
+            // half-away - nudge by std/stx half branchlessly then truncate
+            return trunc(bounded + copysign(T(0.5), bounded));
         } else {
-            return static_cast<std::int32_t>(std::nearbyint(bounded));
+            // half-even
+            return nearbyint(bounded);
         }
     }
 
@@ -40,9 +81,11 @@ namespace lqr {
         const double scale = std::ldexp(1.0, q.frac);
 
         // Call kernal to execute background logic
-        return quantise_scaled<Mode>(x * scale,
+        return static_cast<std::int32_t>(quantise_scaled<Mode>(
+            x * scale,
             static_cast<double>(q.min_code()),
-            static_cast<double>(q.max_code()));
+            static_cast<double>(q.max_code())
+        ));
     } 
 
     template<Rounding Mode>
@@ -55,13 +98,43 @@ namespace lqr {
         assert(gains.size() == out.size());
 
         // Pre-calculate the limits + scale factor
-        const double scaled = std::ldexp(1.0, q.frac);
+        const double scale = std::ldexp(1.0, q.frac);
         const auto lo = static_cast<double>(q.min_code());
         const auto hi = static_cast<double>(q.max_code());
 
+        // Lanes per vector to freeze array size
+        constexpr std::size_t WIDTH = vd::size(); 
+        // Fill all lanes with the scale value
+        const vd vscale = scale, vlo = lo, vhi = hi;
+        
+        const std::size_t n = gains.size();
+        std::size_t i = 0;
+        for (; i + WIDTH <= n; i += WIDTH) {
+            vd x; // Vector body
+            x.copy_from(&gains[i], stdx::element_aligned); // copy gains in
+
+            // Quantise the gains
+            const vd r = quantise_scaled<Mode>(x * vscale, vlo, vhi);
+
+            // Truncate the packed doubles back to ints
+            const auto ri = stdx::static_simd_cast<std::int32_t>(r);
+
+            // Create store - write out the 4 lanes to memory
+            // and convert the ints to Words
+            std::array<std::int32_t, WIDTH> tmp;
+            ri.copy_to(tmp.data(), stdx::element_aligned);
+            for (std::size_t k = 0; k < WIDTH; ++k) {
+                out[i + k] = to_word(tmp[k]);
+            }
+        }
+
         // BRAM gains laid row-major (row * N + col)
-        for (std::size_t i = 0; i < gains.size(); ++i) {
-            out[i] = to_word(quantise_scaled<Mode>(gains[i] * scaled, lo, hi));
+        for (; i < n; ++i) {
+            out[i] = to_word(
+                static_cast<std::int32_t>(
+                    quantise_scaled<Mode>(gains[i] * scale, lo, hi)
+                )
+            );
         }
     }
 
