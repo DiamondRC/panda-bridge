@@ -1,4 +1,5 @@
 #pragma once
+#include "lqrbridge/transport/mmio/barrier.hpp"
 #include "lqrbridge/transport/mmio/bus.hpp"
 #include "lqrbridge/transport/transport.hpp"
 #include "lqrbridge/types.hpp"
@@ -43,6 +44,10 @@ namespace lqr {
         [[nodiscard]] Generation commit() noexcept {
             // Arm swap on posted write.
             bus_.write32(reg_.commit, 0);
+
+            // Commit and other writes ordered before
+            // callers poll.
+            mmio_barrier();
             
             // Expected gen after commit lands.
             // Count this locally instead of stalling the

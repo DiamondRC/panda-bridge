@@ -8,6 +8,7 @@
 namespace lqr {
 
     // View over an mmap 32-bit register window.
+    // Assumes the bus is mapped Device-nGnRnE (strongly ordered).
     class MmapBus {
         volatile std::uint32_t* base_; // Pointer to the window base
     public:
