@@ -119,13 +119,8 @@ namespace lqr {
             // Truncate the packed doubles back to ints
             const auto ri = stdx::static_simd_cast<std::int32_t>(r);
 
-            // Create store - write out the 4 lanes to memory
-            // and convert the ints to Words
-            std::array<std::int32_t, WIDTH> tmp;
-            ri.copy_to(tmp.data(), stdx::element_aligned);
-            for (std::size_t k = 0; k < WIDTH; ++k) {
-                out[i + k] = to_word(tmp[k]);
-            }
+            // Create store - copy per lane int32 -> uint32
+            stdx::static_simd_cast<Word>(ri).copy_to(&out[i], stdx::element_aligned);
         }
 
         // BRAM gains laid row-major (row * N + col)
