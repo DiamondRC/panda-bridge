@@ -8,7 +8,7 @@
   
 namespace lqr {
 
-    // Byte offsets into the block's register window.
+    // Register numbers (0-63) within a PandA block.
     struct Reg {
         // GAINS_START
         std::size_t start; // Pulse resets fill pointer
