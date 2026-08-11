@@ -1,0 +1,13 @@
+/CONFIG
+/build
+/simserver
+*.pyc
+tests/fpga_sequences
+/venv
+
+# uv-managed virtual environment + tool caches
+/.venv
+.ruff_cache/
+
+# MyST build output
+docs/_build/

@@ -1,0 +1,325 @@
+#!/usr/bin/env python
+
+# Extension server for custom fields implemented outside the core server
+
+import argparse
+import os
+import sys
+from importlib import import_module
+import socket
+import logging.handlers
+
+
+# Notify systemd that we are ready if NOTIFY_SOCKET is set (by systemd).
+# This will allow systemd to manage service dependencies, and start the
+# server only when the extension server is ready to accept connections,
+# otherwise the server would be looping waiting for the socket to be ready.
+def notify_systemd():
+    path = os.getenv('NOTIFY_SOCKET')
+    if path:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.connect(path)
+        sock.sendall(b'READY=1\n')
+        sock.close()
+
+
+class ServerError(Exception):
+    pass
+
+
+# This can be used inside an extension module to create extension support for
+# individual fields.  Pass a block constructor (that must take one argument, the
+# block index) which implements set_ and get_ methods as appropriate, and this
+# helper will implement the approprate Extension support.
+#
+# Use this inside the extension module thus:
+#
+#   class MyBlock: ...
+#   def Extension(count):
+#       return ExtensionHelper(MyBlock, count)
+#
+class ExtensionHelper:
+    def __init__(self, block_class, count):
+        self.block_class = block_class
+        self.blocks = [block_class(n) for n in range(count)]
+
+    def parse_read(self, field):
+        # Pick up unbound read method
+        get_field = getattr(self.block_class, 'get_%s' % field, None)
+        if get_field is None:
+            raise ServerError('Cannot read from field %r' % field)
+        def reader(block, *regs):
+            return get_field(self.blocks[block], *regs)
+        return reader
+
+    def parse_write(self, field):
+        # Pick up unbound write method
+        set_field = getattr(self.block_class, 'set_%s' % field, None)
+        if set_field is None:
+            raise ServerError('Cannot write to field %r' % field)
+        def writer(block, value, *regs):
+            return set_field(self.blocks[block], value, *regs)
+        return writer
+
+
+# Imports the named module from the extensions directory.
+def import_extension_module(name):
+    try:
+        module = import_module('%s.%s' % (extension_module, name))
+    except ImportError as e:
+        raise ServerError(e)
+
+    # Inject the ServerError exception and ExtensionHelper into the module so it
+    # can use these
+    module.ServerError = ServerError
+    module.ExtensionHelper = ExtensionHelper
+    return module
+
+
+class IdTable:
+    def __init__(self, name):
+        self.name = name
+        self.id_table = {}
+        self.next_id = 0
+
+    def add_entity(self, entity):
+        id = self.next_id
+        self.next_id += 1
+        self.id_table[id] = entity
+        return id
+
+    def __getitem__(self, id):
+        try:
+            return self.id_table[int(id)]
+        except:
+            raise ServerError('Invalid %s id %r' % (self.name, id))
+
+
+class Extensions:
+    def __init__(self):
+        self.block_ids = IdTable('block')
+        self.reader_ids = IdTable('reader')
+        self.writer_ids = IdTable('writer')
+
+    def parse_block(self, line):
+        # Syntax:   field-count module-name
+        count, module_name = line.split()
+        count = int(count)
+        block = import_extension_module(module_name).Extension(count)
+        return self.block_ids.add_entity(block)
+
+    def parse_field(self, line):
+        # Syntax:   ("R"|"W") block-id parse-args
+        rw = line[0]
+        block_id, parse_args = line[1:].split(' ', 1)
+        block = self.block_ids[block_id]
+
+        if rw == 'R':
+            return self.reader_ids.add_entity(block.parse_read(parse_args))
+        elif rw == 'W':
+            return self.writer_ids.add_entity(block.parse_write(parse_args))
+        else:
+            raise ServerError('Invalid R/W field in parse')
+
+    def read(self, line):
+        # Syntax:   parse-id field-num [read-regs]*
+        args = [int(arg) for arg in line.split(' ')]
+        return self.reader_ids[args[0]](*args[1:])
+
+    def write(self, line):
+        # Syntax:   parse-id field-num value [read-regs]*
+        args = [int(arg) for arg in line.split(' ')]
+        result = self.writer_ids[args[0]](*args[1:])
+
+        # The return from result can be None, which we treat as an empty list,
+        # otherwise it must be a tuple of register values to be written.
+        if result is None:
+            return ()
+        elif isinstance(result, int):
+            return (result,)
+        else:
+            return tuple(result)
+
+
+class Server:
+    def __init__(self, port, loop):
+        self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_sock.bind(('localhost', port))
+        self.server_sock.listen(1)
+        self.loop = loop
+        # Will be filled in by self.run()
+        self.file = None
+        self.ext = None
+        notify_systemd()
+
+    def send(self, message):
+        # If message too long replace with error message
+        if len(message) > 255:
+            message = 'EOverlong response discarded (%u chars)\n' % len(message)
+        logging.debug('Write: %r', message)
+        self.file.write(message)
+        self.file.flush()
+
+    def process_response(self, prefix, *response):
+        logging.debug('response = %r', response)
+        result = ' '.join(['%u' % r for r in response])
+        self.send('%c%s\n' % (prefix, result))
+
+    def process_command(self, line):
+        logging.debug('Read: %r', line)
+        cmd, line = line[0], line[1:]
+
+        if cmd == 'B':
+            self.process_response('B', self.ext.parse_block(line))
+        elif cmd == 'P':
+            self.process_response('P', self.ext.parse_field(line))
+        elif cmd == 'R':
+            self.process_response('R', self.ext.read(line))
+        elif cmd == 'W':
+            self.process_response('W', *self.ext.write(line))
+        else:
+            raise ServerError('Invalid command character \'%c\'' % cmd)
+
+    def run_service(self):
+        while True:
+            line = self.file.readline()
+            if not line:
+                break
+            line = line[:-1]        # Prune trailing \n
+
+            try:
+                self.process_command(line)
+            except ServerError as e:
+                self.send('E%s\n' % str(e))
+            except Exception as e:
+                if not command_args.hide_exceptions:
+                    logging.exception('Caught exception', exc_info = True)
+                message = '%s: %s' % (e.__class__.__name__, str(e))
+                if command_args.normalise_exceptions:
+                    logging.info('Normalising exception %r', message)
+                    message = 'Extension server exception'
+                self.send('E%s\n' % message)
+
+        self.file.close()
+
+    def run(self):
+        while True:
+            conn, _ = self.server_sock.accept()
+            conn.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+            self.file = conn.makefile('rw')
+            self.ext = Extensions()
+
+            self.run_service()
+
+            conn.close()
+            if not self.loop:
+                break
+
+        self.server_sock.close()
+
+
+def close_inherited_files():
+    # Redirect stdin to /dev/null
+    dev_null = os.open('/dev/null', os.O_RDONLY)
+    os.dup2(dev_null, 0)
+
+    # Close parent FDs
+    # http://code.activestate.com/recipes/278731/
+    import resource             # Resource usage information.
+    maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if maxfd == resource.RLIM_INFINITY:
+       maxfd = 1024
+
+    # Iterate through and close all file descriptors except for stdout and
+    # stderr; we'll deal with these when daemonising.
+    for fd in range(3, maxfd):
+        try:
+            os.close(fd)
+        except OSError:  # ERROR, fd wasn't open to begin with (ignored)
+            pass
+
+
+# We daemonise the server by double forking
+def daemonise():
+    if os.fork():
+        # Exit first parent
+        os._exit(0)
+    # Do second fork to avoid generating zombies
+    if os.fork():
+        os._exit(0)
+    # Detach from any controlling terminal
+    os.setsid()
+
+    # If we don't close stdout and stderr at this point then we prevent the web
+    # service that launched us from correctly completing.  Unfortunately, if we
+    # just close the files they end up recycled and causing trouble elsewhere.
+    # So redirect to /dev/null.
+    dev_null = os.open('/dev/null', os.O_WRONLY)
+    os.dup2(dev_null, 1)
+    if command_args.syslog:
+        os.dup2(dev_null, 2)
+
+
+parser = argparse.ArgumentParser(description = 'PandA Extension Server')
+parser.add_argument(
+    '-d', '--daemon', action = 'store_true', help = 'Run as daemon process')
+parser.add_argument(
+    '-v', '--verbose', action = 'store_true', help = 'Log register access')
+parser.add_argument(
+    '-p', '--port', default = 9999, type = int, help = 'Specify socket port')
+parser.add_argument(
+    '-s', '--syslog', action = 'store_true', help = 'Log to syslog not stderr')
+parser.add_argument(
+    '-q', '--hide_exceptions', action = 'store_true',
+    help = 'Run quietly, don\'t log exceptions.  Use for testing only')
+parser.add_argument(
+    '-n', '--normalise_exceptions', action = 'store_true',
+    help = 'Normalise exception messages reported by server.  Testing only')
+parser.add_argument(
+    'extensions', help = 'Extension directory')
+parser.add_argument(
+    '--loop', action = 'store_true',
+    help = 'Keep running after connection closed.')
+command_args = parser.parse_args()
+
+
+# Before we do anything further, close any inherited files.  This is a bit of
+# belt and braces approach, but we are having problems with hanging onto files
+# that don't belong to us.
+close_inherited_files()
+
+
+# If we are logging to a file log there, otherwise to stdout
+if command_args.verbose:
+    level = logging.DEBUG
+else:
+    level = logging.INFO
+if command_args.syslog:
+    handler = logging.handlers.SysLogHandler("/dev/log", "daemon")
+    logging.root.addHandler(handler)
+    logging.root.setLevel(level)
+else:
+    logging.basicConfig(level=level, format='%(levelname)6s %(message)s')
+logging.info('Starting Extension server')
+
+
+# Ensure we can see the extensions directory
+extension_dir, extension_module = os.path.split(command_args.extensions)
+sys.path.insert(0, extension_dir)
+
+
+# Create the server right away and listen for one connection.
+server = Server(command_args.port, command_args.loop)
+logging.info('Extension server ready')
+
+# Need to daemonise after the listening port is ready but before calling accept.
+# This ensures that when our caller gets control the connection will succeed.
+if command_args.daemon:
+    daemonise()
+
+try:
+    server.run()
+except KeyboardInterrupt:
+    pass
+logging.info('Extension server closed')

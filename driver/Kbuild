@@ -1,0 +1,22 @@
+EXTRA_CFLAGS += -std=gnu99
+EXTRA_CFLAGS += -Werror
+EXTRA_CFLAGS += -Wextra
+EXTRA_CFLAGS += -Wno-declaration-after-statement
+EXTRA_CFLAGS += -Wno-unused-parameter
+EXTRA_CFLAGS += -Wno-missing-field-initializers
+EXTRA_CFLAGS += -Wno-type-limits
+
+# Suppress some kernel error messages
+EXTRA_CFLAGS += -Wno-empty-body
+EXTRA_CFLAGS += -Wno-sign-compare
+
+EXTRA_CFLAGS += $(CFLAGS_EXTRA)
+
+obj-m := panda.o
+
+panda-objs += panda_core.o
+panda-objs += panda_map.o
+panda-objs += panda_block.o
+panda-objs += panda_stream.o
+
+# vim: set filetype=make:

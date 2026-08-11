@@ -1,0 +1,361 @@
+TTLIN[6]
+    TERM            param       enum
+        0   High-Z
+        1   50-Ohm
+    VAL             bit_out
+
+TTLOUT[10]
+    VAL             bit_mux
+
+LVDSIN[2]
+    VAL             bit_out
+
+LVDSOUT[2]
+    VAL             bit_mux
+
+LUT[8]
+    FUNC            param       lut
+    INPA            bit_mux
+    INPB            bit_mux
+    INPC            bit_mux
+    INPD            bit_mux
+    INPE            bit_mux
+    OUT             bit_out
+
+SRGATE[4]
+    SET_EDGE        param       enum
+        0   Falling
+        1   Rising
+    RST_EDGE        param       enum
+        0   Falling
+        1   Rising
+    FORCE_SET       write       action
+    FORCE_RST       write       action
+    SET             bit_mux
+    RST             bit_mux
+    OUT             bit_out
+
+DIV[4]
+    DIVISOR         param
+    FIRST_PULSE     param       enum
+        0   OutN
+        1   OutD
+    INP             bit_mux
+    ENABLE          bit_mux
+    OUTD            bit_out
+    OUTN            bit_out
+    COUNT           read
+
+PULSE[4]
+    DELAY           time
+    WIDTH           time
+    INP             bit_mux
+    ENABLE          bit_mux
+    OUT             bit_out
+    ERR_OVERFLOW    read        bit
+    ERR_PERIOD      read        bit
+    QUEUE           read        uint 1023
+    MISSED_CNT      read
+
+SEQ[4]
+    TABLE           table       4
+        15:0    REPEATS
+        19:16   TRIGGER     enum
+            0   Immediate
+            1   BITA=0
+            2   BITA=1
+            3   BITB=0
+            4   BITB=1
+            5   BITC=0
+            6   BITC=1
+            7   POSA>=POSITION
+            8   POSA<=POSITION
+            9   POSB>=POSITION
+            10  POSB<=POSITION
+            11  POSC>=POSITION
+            12  POSC<=POSITION
+        63:32   POSITION    int
+        95:64   TIME1
+        20:20   OUTA1
+        21:21   OUTB1
+        22:22   OUTC1
+        23:23   OUTD1
+        24:24   OUTE1
+        25:25   OUTF1
+        127:96  TIME2
+        26:26   OUTA2
+        27:27   OUTB2
+        28:28   OUTC2
+        29:29   OUTD2
+        30:30   OUTE2
+        31:31   OUTF2
+    PRESCALE        param       time
+    REPEATS         param
+    ENABLE          bit_mux
+    BITA            bit_mux
+    BITB            bit_mux
+    BITC            bit_mux
+    POSA            pos_mux
+    POSB            pos_mux
+    POSC            pos_mux
+    ACTIVE          bit_out
+    OUTA            bit_out
+    OUTB            bit_out
+    OUTC            bit_out
+    OUTD            bit_out
+    OUTE            bit_out
+    OUTF            bit_out
+    TABLE_REPEAT    read
+    TABLE_LINE      read
+    LINE_REPEAT     read
+    STATE           read    enum
+        0   WAIT_ENABLE
+        1   LOAD_TABLE
+        2   WAIT_TRIGGER
+        3   PHASE1
+        4   PHASE2
+
+INENC[4]
+    PROTOCOL        param       enum
+        0   Quadrature
+        1   SSI
+        2   BISS
+        3   enDat
+    CLK_PERIOD      param       time
+    FRAME_PERIOD    param       time
+    BITS            param       uint 63
+    BITS_CRC        param       uint 63
+    SETP            write       int
+    RST_ON_Z        param       bit
+    EXTENSION       read        int
+    ERR_FRAME       read        bit
+    ERR_RESPONSE    read        bit
+    ENC_STATUS      read
+    DCARD_MODE      read
+    A               bit_out
+    B               bit_out
+    Z               bit_out
+    CONN            bit_out
+    TRANS           bit_out
+    VAL             pos_out
+
+QDEC[4]
+    RST_ON_Z        param       bit
+    SETP            write       int
+    A               bit_mux
+    B               bit_mux
+    Z               bit_mux
+    OUT             pos_out
+
+OUTENC[4]
+    PROTOCOL        param       enum
+        0   Quadrature
+        1   SSI
+        2   BISS
+        3   enDat
+        4   ABZ
+    BITS            param       uint 32
+    QPERIOD         param       time
+    ENABLE          bit_mux
+    A               bit_mux
+    B               bit_mux
+    Z               bit_mux
+    VAL             pos_mux
+    CONN            bit_mux
+    QSTATE          read        enum
+        0   Disabled
+        1   At position
+        2   Slewing
+
+POSENC[4]
+    INP             pos_mux
+    QPERIOD         param       time
+    ENABLE          bit_mux
+    PROTOCOL        param       enum
+        0   Quadrature
+        1   Step/Direction
+    A               bit_out
+    B               bit_out
+    QSTATE          read        enum
+        0   Disabled
+        1   At position
+        2   Slewing
+
+ADDER[2]
+    INPA            pos_mux
+    INPB            pos_mux
+    INPC            pos_mux
+    INPD            pos_mux
+    SCALE           param       enum
+        0   /1
+        1   /2
+        2   /4
+    OUT             pos_out
+
+COUNTER[8]
+    DIR             param       enum
+        0   Up
+        1   Down
+    START           param
+    STEP            param
+    ENABLE          bit_mux
+    TRIG            bit_mux
+    CARRY           bit_out
+    OUT             pos_out
+
+PGEN[2]
+    CYCLES          param
+    ENABLE          bit_mux
+    TRIG            bit_mux
+    OUT             pos_out
+    TABLE           table
+    TABLE_STATUS    read        enum
+        0   Ok
+        1   Table not ready
+        2   Table end reached
+        3   DMA overrun
+
+PCOMP[4]
+    START           param
+    STEP            param
+    WIDTH           param
+    PNUM            param
+    RELATIVE        param       enum
+        0   Absolute
+        1   Relative
+    DIR             param       enum
+        0   Positive
+        1   Negative
+    DELTAP          param
+    USE_TABLE       param       enum
+        0   No
+        1   Yes
+    ENABLE          bit_mux
+    INP             pos_mux
+    ACTIVE          bit_out
+    OUT             bit_out
+    ERROR           read        enum
+        0   Ok
+        1   Pulse error
+    TABLE           table
+    TABLE_STATUS    read        enum
+        0   Ok
+        1   Table not ready
+        2   Table end reached
+        3   DMA overrun
+
+ADC[8]
+    OUT             pos_out 123 0.5 some units
+
+PCAP
+    ENABLE          bit_mux
+    GATE            bit_mux
+    CAPTURE         bit_mux
+    CAPTURE_EDGE    param       enum
+        0   Rising
+        1   Falling
+        2   Rising or Falling
+    SHIFT_SUM       param       uint 8
+    HEALTH          read        enum
+        0   Ok
+        1   Capture events too close together
+        2   Samples overflow
+    ACTIVE          bit_out
+
+    TS_START        ext_out     timestamp
+    TS_END          ext_out     timestamp
+    TS_CAPTURE      ext_out     timestamp
+    SAMPLES         ext_out     samples
+
+    BITS0           ext_out     bits 0
+    BITS1           ext_out     bits 1
+    BITS2           ext_out     bits 2
+    BITS3           ext_out     bits 3
+
+BITS
+    A               param       bit
+    B               param       bit
+    C               param       bit
+    D               param       bit
+    OUTA            bit_out
+    OUTB            bit_out
+    OUTC            bit_out
+    OUTD            bit_out
+
+CLOCKS
+    A_PERIOD        param       time
+    B_PERIOD        param       time
+    C_PERIOD        param       time
+    D_PERIOD        param       time
+    OUTA            bit_out
+    OUTB            bit_out
+    OUTC            bit_out
+    OUTD            bit_out
+
+SLOW
+    TEMP_PSU        read        int
+    TEMP_SFP        read        int
+    TEMP_ENC_L      read        int
+    TEMP_PICO       read        int
+    TEMP_ENC_R      read        int
+    ALIM_12V0       read
+    PICO_5V0        read
+    IO_5V0          read
+    SFP_3V3         read
+    FMC_15VN        read
+    FMC_15VP        read
+    ENC_24V         read
+    FMC_12V         read
+
+FMC
+    FMC_PRSNT       read
+    LINK_UP         read
+    ERROR_COUNT     read
+    LA_P_ERROR      read
+    LA_N_ERROR      read
+    GTREFCLK        read
+    FMC_CLK0        read
+    FMC_CLK1        read
+    SOFT_RESET      write       action
+    EXT_CLK         read
+    LOOP_PERIOD     param
+
+SFP
+    LINK1_UP        read
+    ERROR1_COUNT    read
+    LINK2_UP        read
+    ERROR2_COUNT    read
+    LINK3_UP        read
+    ERROR3_COUNT    read
+    SFP_CLK1        read
+    SFP_CLK2        read
+    SFP_CLK3        read
+    SOFT_RESET      write       action
+
+SYSTEM[1]
+    TEMP_PSU        read int
+    TEMP_ZYNQ       read scalar 0.001 0 deg
+    VCCINT          read scalar 0.001 0 deg
+
+DUMMY[5]
+    DUMMY_R         read
+    DUMMY_W         write
+    POLY_R          read
+    POLY_W          write
+
+INTERVAL[3]
+    CENTRE          param
+    RANGE           param
+
+SFP_RX
+    PARAM           param
+    BITA            bit_out
+
+SFP_TX
+    PARAM           param
+    BITA            bit_mux
+
+*METADATA
+    MODEL           constant  =String describing model
+    YAML            multiline
+    LABEL_BLAH1     string

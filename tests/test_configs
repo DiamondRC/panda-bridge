@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Script for testing behaviour of server when running against configurations
+# with parse errors.
+
+HERE="$(dirname "$0")"
+TOP="$HERE"/..
+
+TEST_TEMPLATE="$HERE/test_config_tests"
+VERBOSE=0
+KEEP_FILES=0
+
+while getopts 't:vkh' option; do
+    case "$option" in
+        t)  TEST_TEMPLATE="$OPTARG" ;;
+        v)  VERBOSE=$((VERBOSE+1)) ;;
+        k)  KEEP_FILES=1 ;;
+        h)  cat <<'EOF'
+Usage: test_configs [-v] [-t <test-script>] [<tests>]
+Runs tests from the given test-script.
+    -v  Increase verbosity
+    -t: Specify test script, default is ./test_config_tests
+    -h  Show this help
+EOF
+            exit 0 ;;
+        *)  echo >&2 'Invalid options: try -h for help'
+            exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+
+# Assemble all the tests into separate directories and files
+TEMP_DIR="$(mktemp -d)"
+if ((KEEP_FILES)); then
+    trap "echo Keeping $TEMP_DIR" EXIT
+else
+    trap "rm -rf $TEMP_DIR" EXIT
+fi
+
+TESTS=($(
+    sed '/^#/d; /^$/d' "$TEST_TEMPLATE" |
+    while read -r; do
+        case "$REPLY" in
+            --*)
+                read prefix TEST RC <<<"$REPLY"
+                echo "$TEST"
+                [[ -n $RC ]]  ||  RC=0
+                TEST_DIR="$TEMP_DIR/$TEST"
+                mkdir "${TEST_DIR}"
+                echo "$RC" >"$TEST_DIR"/rc
+                cp "$TOP"/config_d/* "${TEST_DIR}"
+                ;;
+            -*)
+                TEST_FILE="$TEST_DIR"/"${REPLY#- }"
+                touch "$TEST_FILE"
+                ;;
+            *)
+                printf '%s\n' "$REPLY" >>"$TEST_FILE"
+                ;;
+        esac
+    done
+))
+
+# If user has specified specific tests then run only those
+(($# > 0))  &&  TESTS=("$@")
+
+
+echo Running tests "${TESTS[@]}"
+failed=0
+for test in "${TESTS[@]}"; do
+    config="$TEMP_DIR/$test"
+    if [[ -d "$config" ]]; then
+        target_rc="$(cat "$config"/rc)"
+        result="$("$TOP"/simserver -P -c "$config" -V-q -- -T 2>&1 >/dev/null)"
+        rc=$?
+        if grep -q '^==' <<<"$result"; then
+            if grep -q '^==[0-9]*== Invalid' <<<"$result"; then
+                echo $test Error $rc
+                ((VERBOSE > 0))  &&  cat <<<"$result"
+                failed=$((failed + 1))
+            else
+                echo $test Leak $rc
+                ((VERBOSE > 1))  &&  cat <<<"$result"
+                ((rc = 0))  &&  failed=$((failed + 1))
+            fi
+        elif (($rc == $target_rc)); then
+            echo $test Ok $rc
+            ((VERBOSE > 2))  &&  cat <<<"$result"
+        else
+            echo $test Wrong RC $rc != $target_rc
+            ((VERBOSE > 0))  &&  cat <<<"$result"
+            failed=$((failed + 1))
+        fi
+    else
+        echo $test not found
+    fi
+done
+
+exit $((failed > 0 ? 1 : 0))
