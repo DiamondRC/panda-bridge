@@ -1,6 +1,6 @@
 # lqr-bridge
 
-Low-latency PS→PL gain/weight bridge for the PandA LQR controller.
+Low-latency PS->PL gain/weight bridge for the PandA LQR controller. Runs on a forked build of the PandA-Server. Docs TODO.
 
 ## Purpose
 
@@ -19,13 +19,3 @@ Containerised C++26 (GCC 15 / Clang, `-std=c++2c`).
 ```sh
 `cmake --build build/asan && ctest --preset asan --output-on-failure`
 ```
-
-| preset  | purpose |
-|---------|---------|
-| debug   | plain Debug (clangd reads `build/debug`) |
-| asan    | AddressSanitizer |
-| tsan    | ThreadSanitizer |
-| ubsan   | UndefinedBehaviorSanitizer |
-| release | RelWithDebInfo |
-| clang   | build under Clang (dual-compiler check) |
-
