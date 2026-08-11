@@ -1,0 +1,85 @@
+#!/bin/bash
+
+HERE="$(dirname "$0")"
+
+# This is filled in from the setting in CONFIG
+PYTHON='@@PYTHON@@'
+
+PERSISTENCE='@@BUILD_DIR@@'/persistence.state
+
+
+CONFIG_PORT=8888
+DATA_PORT=8889
+DEBUG=(valgrind --leak-check=full --track-origins=yes)
+# By default run local simulation
+SIM_SERVER="$HERE"/python/sim_server
+EXT_SERVER="$HERE"/python/extension_server
+EXT_DIR="$HERE"/python/test_extension
+EXT_PORT=9998
+CONFIG_DIR='@@BUILD_DIR@@/config_d'
+SIM_ARGS=()
+EXT_ARGS=()
+
+
+# Allow some settings to be overridden.
+while getopts 'np:d:f:c:vV:P-E:S:gh' option; do
+    case "$option" in
+    n)  DEBUG=() ;;
+    p)  CONFIG_PORT=$OPTARG ;;
+    d)  DATA_PORT=$OPTARG ;;
+    f)  SIM_SERVER="$OPTARG/autogen/sim_server"
+        CONFIG_DIR="$OPTARG/autogen/config_d" ;;
+    c)  CONFIG_DIR="$OPTARG" ;;
+    v)  SIM_ARGS+=(-v)
+        EXT_ARGS+=(-v) ;;
+    V)  DEBUG+=("$OPTARG") ;;
+    P)  rm -f "$PERSISTENCE" ;;
+    E)  EXT_ARGS+=("$OPTARG") ;;
+    S)  SIM_ARGS+=("$OPTARG") ;;
+    g)  DEBUG=(gdb --args) ;;
+    -)  ;;
+    h)  cat <<EOF
+./simserver [options] [-- command options]
+options can be one of:
+    -n  Run without valgrind memory checking
+    -f: Run with PandABox-FPGA/build/apps/<app> FPGA simulation
+    -c: Specify configuration directory
+    -p: Specify configuration port (default 8888)
+    -d: Specify data port (default 8889)
+    -v  Run simulation in verbose mode
+    -V: Add arguments to valgrind
+    -P  Reset persistence file before running
+    -E: Pass extra arguments through to extension server
+    -S: Pass extra arguments through to simulation server
+    -g  Run with gdb (instead of valgrind)
+    -h  Show this help
+Remaining command options are passed through to the server executable.
+EOF
+        exit 0 ;;
+    *)  exit >&2 'Invalid option: try -h for help'
+        exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+# Force any previously running instance of the simulation server to go away --
+# this can happen if sim_server failed on startup for any reason. -w1 bounds the
+# poke: netcat-openbsd does not close on stdin EOF without -N, so without a timeout
+# it would hang here whenever a previous instance is actually still listening.
+nc -w1 localhost 9999 </dev/null
+nc -w1 localhost $EXT_PORT </dev/null
+
+# Run the simulation server as a daemon.  It will ensure its socket is up and
+# running before taking itself into the background.
+echo Running simulation "$SIM_SERVER"
+"$PYTHON" "$SIM_SERVER" "${SIM_ARGS[@]}" -d  &&
+
+# Run up the extension server
+"$PYTHON" "$EXT_SERVER" "${EXT_ARGS[@]}" -d -p$EXT_PORT "$EXT_DIR"  &&
+
+exec "${DEBUG[@]}" \
+    '@@BUILD_DIR@@'/sim_server/sim_server \
+    -f"$PERSISTENCE" -p$CONFIG_PORT -d$DATA_PORT -R -c"$CONFIG_DIR" \
+    -X$EXT_PORT -r "Test Server" \
+    "$@"
