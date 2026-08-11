@@ -37,7 +37,7 @@ namespace lqr {
             return (off == reg_.gen) ? gen_ : 0u;
         }
 
-        // Servo pass boundary: the armed deferred swap lands here.
+        // Armed deferred swap at servo-pass boundary
         void tick() noexcept {
             if (armed_) {
                 ++gen_;
@@ -45,7 +45,7 @@ namespace lqr {
             }
         }
 
-        // Inspection
+        // For inspection
         [[nodiscard]] Word at(std::size_t i) const noexcept { return bank_[i]; }
         [[nodiscard]] std::size_t count() const noexcept { return cnt_; }
         [[nodiscard]] bool armed() const noexcept { return armed_; }

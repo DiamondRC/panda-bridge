@@ -4,7 +4,7 @@
 #include "lqrbridge/transport/mmio/mmio_transport.hpp"
 #include "lqrbridge/transport/transport.hpp"
 #include "lqrbridge/types.hpp"
-#include "mmio/fake_bus.hpp"
+#include "mmio/mock_bus.hpp"
 
 #include <array>
 #include <cstddef>

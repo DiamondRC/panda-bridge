@@ -21,7 +21,7 @@ namespace lqr {
         
         // GAINS_LENGTH - informational
         // skipped for latency
-    }; 
+    };
 
     template <Bus B>
     class MmioTransport {
@@ -61,6 +61,5 @@ namespace lqr {
         }
 
         B& bus() noexcept { return bus_; } // Test hook
-
     };
 }
