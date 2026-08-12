@@ -359,3 +359,9 @@ SFP_TX
     MODEL           constant  =String describing model
     YAML            multiline
     LABEL_BLAH1     string
+
+LQR[1]
+    GAINS           table       1
+        31:0    K       int
+    COMMIT          write       action
+    GEN             read

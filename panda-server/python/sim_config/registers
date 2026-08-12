@@ -265,3 +265,8 @@ SFP_RX      S31
 SFP_TX      S31
     PARAM           1
     BITA            2 3
+
+LQR         28
+    GAINS           short   32    0 1 2
+    COMMIT          3
+    GEN             4
