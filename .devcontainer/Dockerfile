@@ -4,6 +4,7 @@ FROM docker.io/library/gcc:15
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake ninja-build git gdb ccache pkg-config python3 \
+        python3-numpy netcat-openbsd \
         clang clangd clang-tidy clang-format \
         lld mold lldb \
         cppcheck valgrind \

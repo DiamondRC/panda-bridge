@@ -27,6 +27,7 @@
 #include "metadata.h"
 #include "extension.h"
 #include "mac_address.h"
+#include "lqr_bridge.h"
 
 
 static unsigned int config_port = 8888;
@@ -249,6 +250,7 @@ int main(int argc, char *const argv[])
         /* Now run the server.  Control will not return until we're ready to
          * terminate. */
         log_message("Server started");
+        lqr_bridge_start(); // Inject our LQR optimiser + gain bridge
         error =
             IF(persistence_file, start_persistence())  ?:
             start_data_server()  ?:
@@ -261,6 +263,7 @@ int main(int argc, char *const argv[])
     /* Purely for the sake of valgrind heap checking, perform an orderly
      * shutdown.  Everything is done in reverse order, and each component needs
      * to cope with being called even if it was never initialised. */
+    lqr_bridge_stop(); 
     terminate_data_server_early();
     terminate_socket_server();
     terminate_extension_server();

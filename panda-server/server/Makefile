@@ -92,6 +92,9 @@ sw_hardware.o: named_registers.h
 named_registers.h: named_registers.py $(TOP)/config_d/registers
 	$(PYTHON) $^ >$@
 
+# C++26 compile rules for the injected LQR optimiser
+lqr_bridge.o: lqr_bridge.cpp
+	$(CXX) -std=c++26 -O3 -g $(CPPFLAGS) -c -o $@ $<
 
 # Pass the git version through to version
 version.o: CPPFLAGS += -DGIT_VERSION='"$(GIT_VERSION)"'
@@ -102,12 +105,12 @@ version.o: FORCE
 FORCE:
 .phony: FORCE
 
-
-server: $(SRCS:.c=.o) hw_hardware.o
+# C++ bridge sources compiled into the server (in-process gain thread).
+server: $(SRCS:.c=.o) hw_hardware.o lqr_bridge.o
 	$(TOP)/server/check_global_vars $(TOP)/server/global_vars .
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $
 
-sim_server: $(SRCS:.c=.o) sw_hardware.o sim_hardware.o
+sim_server: $(SRCS:.c=.o) sw_hardware.o sim_hardware.o lqr_bridge.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 %.d: %.c
