@@ -415,6 +415,8 @@ static error__t put_pcap(
     struct connection_context *connection,
     const char *command, const char *value)
 {
+    if (!data_capture_available())
+        return FAIL_("Data capture disabled (server started with -N)");
     char action_name[MAX_NAME_LENGTH];
     return
         parse_char(&command, '.')  ?:
@@ -440,7 +442,9 @@ static error__t lookup_pcap_get_action(
 }
 
 static error__t get_pcap(const char *command, struct connection_result *result)
-{
+{   
+    if (!data_capture_available())
+        return FAIL_("Data capture disabled (server started with -N)");
     char action_name[MAX_NAME_LENGTH];
     return
         parse_char(&command, '.')  ?:

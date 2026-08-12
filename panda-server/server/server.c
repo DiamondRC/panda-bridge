@@ -55,6 +55,12 @@ static const char *pid_filename = NULL;
  * checks.  This is used for testing and configuration file validation. */
 static bool test_config_only = false;
 
+/* Toggle the PCAP data collection machinary.
+ * It's not clear to me if we can run the optimiser at 200kHz with
+ * the PCAP running, so we'll add a flag to disable it.
+ * Now -N strips PCAP capture out (data + stream) */
+static bool capture_enabled = true;
+
 /* String used to report rootfs_version on system startup via *IDN? command. */
 static const char *rootfs_version = "(unknown)";
 
@@ -116,7 +122,7 @@ static error__t process_options(int argc, char *const argv[])
     error__t error = ERROR_OK;
     while (!error)
     {
-        switch (getopt(argc, argv, "+hp:d:Rc:f:t:DP:TM:X:r:"))
+        switch (getopt(argc, argv, "+hp:d:Rc:f:t:DP:TM:X:r:N"))
         {
             case 'h':   usage(argv0);                                   exit(0);
             case 'p':   error = parse_port(optarg, &config_port);       break;
@@ -131,6 +137,7 @@ static error__t process_options(int argc, char *const argv[])
             case 'M':   mac_address_filename = optarg;                  break;
             case 'X':   error = parse_port(optarg, &extension_port);    break;
             case 'r':   rootfs_version = optarg;                        break;
+            case 'N':   capture_enabled = false;                        break;
             default:
                 return FAIL_("Try `%s -h` for usage", argv0);
             case -1:
@@ -240,7 +247,8 @@ int main(int argc, char *const argv[])
                 persistence_poll, persistence_holdoff, persistence_backoff))  ?:
         IF(mac_address_filename,
             load_mac_address_file(mac_address_filename))  ?:
-        initialise_data_server()  ?:
+        IF(capture_enabled, // strip PCAP
+            initialise_data_server())   ?:
         initialise_socket_server(config_port, data_port, reuse_addr)  ?:
 
         maybe_daemonise();
@@ -250,10 +258,13 @@ int main(int argc, char *const argv[])
         /* Now run the server.  Control will not return until we're ready to
          * terminate. */
         log_message("Server started");
+        if (!capture_enabled) {// Loudly announce no PCAP
+            log_message("Capture (PCAP) disabled by -N");
+        }
         lqr_bridge_start(); // Inject our LQR optimiser + gain bridge
         error =
             IF(persistence_file, start_persistence())  ?:
-            start_data_server()  ?:
+            IF(capture_enabled, start_data_server())  ?:
             run_socket_server();
         ERROR_REPORT(error, "Server shutting down");
     }

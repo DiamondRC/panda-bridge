@@ -696,11 +696,22 @@ static bool send_data_completion(
 }
 
 
+/* True once the capture buffer exists. False when the server was started
+ * with -N (capture stripped), so callers can refuse capture ops instead of
+ * dereferencing a NULL buffer. */
+bool data_capture_available(void)
+{
+    return data_buffer != NULL;
+}
+
 /* This is the top level handler for a single data client connection.  The
  * connection must open with a format request, after which we will send data
  * capture results while the socket is connected. */
 error__t process_data_socket(int scon)
 {
+    if (!data_buffer)
+        return FAIL_("Data capture disabled (server started with -N)");
+
     struct data_connection connection = {
         .scon = scon,
         .file = create_buffered_file(scon, IN_BUF_SIZE, OUT_BUF_SIZE),

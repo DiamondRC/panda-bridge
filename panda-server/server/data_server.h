@@ -21,6 +21,8 @@ error__t start_data_server(void);
 void terminate_data_server_early(void);
 void terminate_data_server(void);
 
+/* Returns false when capture was stripped at startup (-N). */
+bool data_capture_available(void);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* User interface command support. */
