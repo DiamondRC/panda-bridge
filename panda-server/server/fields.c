@@ -155,6 +155,20 @@ const char *get_field_description(struct field *field)
     return field->description;
 }
 
+unsigned int get_block_base(const struct block *block)
+{   
+    return block->base;
+}
+ 
+error__t get_field_registers(
+    const struct field *field, unsigned int regs[], size_t *count)
+{           
+    return
+        TEST_OK_(field->methods->get_registers,
+            "Field '%s' has no register mapping", field->name)  ?:
+        field->methods->get_registers(field->class_data, regs, count);
+}
+
 
 struct block *get_field_block(const struct field *field)
 {

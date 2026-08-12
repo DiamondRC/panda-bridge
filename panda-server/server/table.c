@@ -252,7 +252,12 @@ struct table_state {
     struct hw_table *table;     // Hardware interface to tables
 
     struct attr *mode_attr;         // Mode attribute for change notify
-    struct table_block blocks[];    // Individual table blocks
+
+    /* Short-table control registers */
+    bool has_registers;
+    unsigned int init_reg, fill_reg, length_reg;
+
+    struct table_block blocks[];    // Individual table blocks (must stay last)
 };
 
 
@@ -579,7 +584,11 @@ static error__t short_table_parse_register(
         parse_whitespace(line)  ?:
         check_parse_register(field, line, &length_reg)  ?:
 
-        DO(state->max_length = (size_t) max_length)  ?:
+        DO(state->max_length = (size_t) max_length;
+            state->has_registers = true;
+            state->init_reg = init_reg;
+            state->fill_reg = fill_reg;
+            state->length_reg = length_reg) ?:
         hw_open_short_table(
             block_base, state->block_count,
             init_reg, fill_reg, length_reg, state->max_length, &state->table);
@@ -757,6 +766,19 @@ static error__t table_queued_lines_format(
         hw_get_queued_words(state->table, number) / state->field_set.row_words);
 }
 
+static error__t table_get_registers(
+    void *class_data, unsigned int regs[], size_t *count)
+{          
+    struct table_state *state = class_data;
+    return
+        TEST_OK_(state->has_registers,
+            "Table has no short-table registers")  ?:
+        DO(regs[0] = state->init_reg;     // GAINS_START
+           regs[1] = state->fill_reg;     // GAINS_DATA
+           regs[2] = state->length_reg;   // GAINS_LENGTH
+           *count = 3);
+}
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Published interface. */
@@ -770,6 +792,7 @@ const struct class_methods table_class_methods = {
     .get_many = table_get_many,
     .put_table = table_put_table,
     .get_subfield = table_get_subfield,
+    .get_registers = table_get_registers,
     .change_set = table_change_set,
     .change_set_index = CHANGE_IX_TABLE,
     .attrs = DEFINE_ATTRIBUTES(

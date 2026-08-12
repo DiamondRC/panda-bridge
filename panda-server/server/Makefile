@@ -67,7 +67,7 @@ SRCS += metadata.c              # Support for *METADATA command
 SRCS += mac_address.c           # Support for FPGA MAC address loading
 SRCS += extension.c             # Support for extension server registers
 SRCS += std_dev.c               # Computation of standard deviation
-
+SRCS += lqr_resolve.c           # LQR coordinate resolver
 
 # Program for loading slow FPGA on carrier card.
 slow_load: slow_load.c
@@ -94,7 +94,7 @@ named_registers.h: named_registers.py $(TOP)/config_d/registers
 
 # C++26 compile rules for the injected LQR optimiser
 lqr_bridge.o: lqr_bridge.cpp
-	$(CXX) -std=c++26 -O3 -g $(CPPFLAGS) -c -o $@ $<
+	$(CXX) -std=c++26 -O3 -g -I$(TOP)/../include $(CPPFLAGS) -c -o $@ $<
 
 # Pass the git version through to version
 version.o: CPPFLAGS += -DGIT_VERSION='"$(GIT_VERSION)"'

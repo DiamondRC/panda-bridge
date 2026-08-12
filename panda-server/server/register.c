@@ -144,6 +144,16 @@ static error__t read_register(
             state->block_base, number, state->field_register));
 }
 
+static error__t register_get_registers(
+    void *class_data, unsigned int regs[], size_t *count)
+{
+    struct base_state *state = class_data;
+    return
+        TEST_OK_(!state->extension,
+            "Field uses an extension register, not a simple one")  ?:
+        DO(regs[0] = state->field_register;  *count = 1);
+}
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Shared implementation for param and read classes, in particular param and
@@ -286,6 +296,7 @@ const struct class_methods param_class_methods = {
     .put = base_put,
     .change_set = param_change_set,
     .change_set_index = CHANGE_IX_CONFIG,
+    .get_registers = register_get_registers,
 };
 
 
@@ -358,6 +369,7 @@ const struct class_methods read_class_methods = {
     .get = base_get,
     .change_set = read_change_set,
     .change_set_index = CHANGE_IX_READ,
+    .get_registers = register_get_registers,
 };
 
 
@@ -397,4 +409,5 @@ const struct class_methods write_class_methods = {
     .init = write_init,
     .parse_register = write_parse_register,
     .put = base_put,
+    .get_registers = register_get_registers,
 };

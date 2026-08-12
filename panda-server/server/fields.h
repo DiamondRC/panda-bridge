@@ -72,6 +72,10 @@ struct class_methods {
     /* Returns subfield for array field. */
     struct table_subfield *(*get_subfield)(void *class_data, const char *name);
 
+    /* Adds a vtable slot for the LQR gains */
+    error__t (*get_registers)(
+        void *class_data, unsigned int regs[], size_t *count);
+
     /* Class specific attributes. */
     const struct attr_array attrs;
 };
@@ -139,6 +143,13 @@ void reset_change_set(
 
 /* Returns block associated with given field. */
 struct block *get_field_block(const struct field *field);
+
+/* Get's the blocks register base */
+unsigned int get_block_base(const struct block *block);
+
+/* Reports the register(s) backing a field */
+error__t get_field_registers(
+    const struct field *field, unsigned int regs[], size_t *count);
 
 /* Returns extension_block for this block. */
 struct extension_block *get_block_extension(const struct block *block);
