@@ -23,12 +23,15 @@ bool lqr_resolve(struct lqr_coords *out)
         
     error__t error =
         lookup_block("LQR", &block, &block_count)  ?:
-        lookup_field(block, "GAINS",  &gains)   ?:
-        lookup_field(block, "COMMIT", &commit)  ?:
-        lookup_field(block, "GEN",    &gen)     ?:
-        get_field_registers(gains,  gains_regs,  &reg_count)  ?:
-        get_field_registers(commit, commit_regs, &reg_count)  ?:
-        get_field_registers(gen,    gen_regs,    &reg_count);
+        lookup_field(block, "GAINS",  &gains) ?:
+        lookup_field(block, "COMMIT", &commit) ?:
+        lookup_field(block, "GEN",    &gen) ?:
+        get_field_registers(gains,  gains_regs,  &reg_count) ?:
+        get_field_registers(commit, commit_regs, &reg_count) ?:
+        get_field_registers(gen,    gen_regs,    &reg_count) ?:
+        get_field_registers(gen, gen_regs, &reg_count)  ?:
+        set_field_read_only(gains)  ?: // bridge owns the gain stream
+        set_field_read_only(commit);   // and the swap trigger
         
     if (ERROR_REPORT(error, "LQR bridge: could not resolve LQR block"))
         return false; 

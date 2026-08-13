@@ -256,8 +256,9 @@ struct table_state {
     /* Short-table control registers */
     bool has_registers;
     unsigned int init_reg, fill_reg, length_reg;
-
-    struct table_block blocks[];    // Individual table blocks (must stay last)
+    
+    bool read_only; // is the register read only?
+    struct table_block blocks[];    // Individual table blocks (KEEP LAST!)
 };
 
 
@@ -306,6 +307,11 @@ static error__t write_base_64(
     }
     return ERROR_OK;
 }
+
+static void table_set_read_only(void *class_data)
+    {   
+        ((struct table_state *) class_data)->read_only = true;
+    }
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -691,6 +697,8 @@ static error__t table_put_table(
     struct put_table_writer *writer)
 {
     struct table_state *state = class_data;
+    if (state->read_only)
+        return FAIL_("Table is bridge-owned (client writes refused)");
     struct table_block *block = &state->blocks[number];
     return start_table_write(block, streaming_mode, last_table, binary, writer);
 }
@@ -789,6 +797,7 @@ const struct class_methods table_class_methods = {
     .parse_register = table_parse_register,
     .destroy = table_destroy,
     .set_description_parse = table_set_description_parse,
+    .set_read_only = table_set_read_only,
     .get_many = table_get_many,
     .put_table = table_put_table,
     .get_subfield = table_get_subfield,

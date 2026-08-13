@@ -76,6 +76,10 @@ struct class_methods {
     error__t (*get_registers)(
         void *class_data, unsigned int regs[], size_t *count);
 
+    /* Marks this field's register(s) as owned by the in-process bridge,
+     * so client writes are refused. NULL for classes with no write path. */
+    void (*set_read_only)(void *class_data);
+
     /* Class specific attributes. */
     const struct attr_array attrs;
 };
@@ -154,6 +158,8 @@ error__t get_field_registers(
 /* Returns extension_block for this block. */
 struct extension_block *get_block_extension(const struct block *block);
 
+/* Marks a field bridge-owned so subsequent client writes are refused. */
+error__t set_field_read_only(const struct field *field);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* Field access methods. */

@@ -169,6 +169,13 @@ error__t get_field_registers(
         field->methods->get_registers(field->class_data, regs, count);
 }
 
+error__t set_field_read_only(const struct field *field)
+{   
+    return 
+        TEST_OK_(field->methods->set_read_only, 
+            "Field '%s' cannot be marked read-only", field->name) ?:
+        DO(field->methods->set_read_only(field->class_data));
+} 
 
 struct block *get_field_block(const struct field *field)
 {

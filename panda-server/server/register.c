@@ -34,6 +34,7 @@ struct base_state {
      * then field_register is ignored. */
     unsigned int field_register;    // Register to be read or written
     struct extension_address *extension;    // Extension address
+    bool read_only; // Mark register as read-only
 };
 
 
@@ -115,6 +116,8 @@ static error__t base_put(
     void *class_data, unsigned int number, const char *string)
 {
     struct base_state *state = class_data;
+    if (state->read_only) 
+        return FAIL_("Field is bridge-owned (client writes refused)");
     return type_put(state->type, number, string);
 }
 
@@ -152,6 +155,11 @@ static error__t register_get_registers(
         TEST_OK_(!state->extension,
             "Field uses an extension register, not a simple one")  ?:
         DO(regs[0] = state->field_register;  *count = 1);
+}
+
+static void register_set_read_only(void *class_data)
+{   
+    ((struct base_state *) class_data)->read_only = true;
 }
 
 
@@ -297,6 +305,7 @@ const struct class_methods param_class_methods = {
     .change_set = param_change_set,
     .change_set_index = CHANGE_IX_CONFIG,
     .get_registers = register_get_registers,
+    .set_read_only = register_set_read_only,
 };
 
 
@@ -410,4 +419,5 @@ const struct class_methods write_class_methods = {
     .parse_register = write_parse_register,
     .put = base_put,
     .get_registers = register_get_registers,
+    .set_read_only = register_set_read_only,
 };
