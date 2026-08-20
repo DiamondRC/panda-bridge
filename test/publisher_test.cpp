@@ -85,5 +85,6 @@ TEST_CASE("Back-pressure blocks a publish over an unconsumed bank") {
         k2, gain_q, Rounding::HalfAway);
 
     CHECK_FALSE(g2.has_value()); // back-pressured, did not stage
+    CHECK(pub.dropped() == 1u); // check if logged
     CHECK(pub.transport().bus().at(0) == 0x02000000u); // bank still holds k1, not k2
 }

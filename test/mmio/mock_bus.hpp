@@ -40,7 +40,7 @@ namespace lqr {
         // Armed deferred swap at servo-pass boundary
         void tick() noexcept {
             if (armed_) {
-                ++gen_;
+                gen_ = (gen_ + 1) & kGenMask;
                 armed_ = false;
             }
         }

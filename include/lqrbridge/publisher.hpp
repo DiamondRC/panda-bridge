@@ -5,6 +5,7 @@
 #include "lqrbridge/types.hpp"
  
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <optional>
@@ -24,6 +25,7 @@ namespace lqr {
         std::array<Word, N> scratch_{};
         Generation last_ = 0;
         bool pending_ = false;
+        std::atomic<std::size_t> dropped_ = 0;
     public:
         explicit Publisher(T transport) noexcept : transport_(transport) {}
 
@@ -39,6 +41,8 @@ namespace lqr {
                 pending_ && confirm(transport_, last_, 0) == 
                 Swap::TimedOut
             ) {
+                // publish skipped by backpressure
+                dropped_.fetch_add(1, std::memory_order_relaxed);
                 return std::nullopt;
             }
 
@@ -53,6 +57,10 @@ namespace lqr {
 
         T& transport() noexcept {
             return transport_;
+        }
+
+        [[nodiscard]] std::size_t dropped() const noexcept {
+            return dropped_.load(std::memory_order_relaxed);
         }
     };
 }

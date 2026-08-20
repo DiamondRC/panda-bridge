@@ -7,6 +7,13 @@
 namespace lqr {
     // Swap version tag
     using Generation = std::uint32_t;
+    inline constexpr unsigned kGenWidth = 16; // GEN_W
+    // Keep counter 16 bit within 32 bit container =>
+    // ms overflow in testing versus ~6hrs for 32 bit
+    //
+    // Shift the 1st to the 16th bit and flip + all lower bits to 0x0000FFFF,
+    // type width remains as the single point of truth not hardcoded val.
+    inline constexpr Generation kGenMask = (Generation{1} << kGenWidth) - 1;
 
     enum class Swap {
         Confirmed,

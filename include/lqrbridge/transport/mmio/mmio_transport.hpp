@@ -42,6 +42,11 @@ namespace lqr {
         }
 
         [[nodiscard]] Generation commit() noexcept {
+            // Order all staged DATA reg writes ahead of the
+            // COMMIT reg write which arms the swap,
+            // so the PL can never latch a half-written bank.
+            mmio_barrier();
+
             // Arm swap on posted write.
             bus_.write32(reg_.commit, 0);
 
@@ -52,7 +57,10 @@ namespace lqr {
             // Expected gen after commit lands.
             // Count this locally instead of stalling the
             // core with reads of GEN.
-            return ++expected_;
+            //
+            // Wrap @ GEN_W bits to track RTL counter cross.
+            expected_ = (expected_ + 1) & kGenMask;
+            return expected_;
         }
 
         [[nodiscard]] Generation generation() const noexcept {

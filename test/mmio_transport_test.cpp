@@ -9,7 +9,8 @@
 #include <array>
 #include <cstddef>
 
-using lqr::Reg, lqr::MmioTransport, lqr::MockBus, lqr::Word, lqr::Generation;
+using lqr::Reg, lqr::MmioTransport, lqr::MockBus, lqr::Word, 
+    lqr::Generation, lqr::confirm, lqr::Swap;
 
 // MmioTransport driving the MockBus must satisfy the Transport contract.
 static_assert(lqr::Transport<MmioTransport<MockBus<9>>>);
@@ -116,3 +117,22 @@ TEST_CASE("Staging a full-capacity frame fills every slot") {
     CHECK(mt.bus().at(0) == frame[0]);
     CHECK(mt.bus().at(3) == frame[3]);
 }
+
+TEST_CASE("Expected generation tracks the RTL counter across its 2^GEN_W wrap") {
+    auto mt = make<9>();
+    const std::array<Word, 2> frame{0xAAu, 0xBBu};
+
+    // Drive well past the 16-bit rollover.
+    const std::size_t passes = (std::size_t{1} << lqr::kGenWidth) + 16;
+
+    // Ensure wrap
+    for (std::size_t i = 0; i < passes; ++i) {
+        mt.stage(frame);
+        const Generation expected = mt.commit();
+        mt.bus().tick(); // land the deferred swap
+        REQUIRE(confirm(mt, expected, 1) == Swap::Confirmed);
+    }   
+        
+    // Prove we actually crossed the boundary.
+    CHECK(mt.generation() < 32u);
+}   
