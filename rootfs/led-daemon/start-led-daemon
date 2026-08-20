@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Ensure LED daemon is running.
+
+. /etc/init.d/functions
+
+LED_PIDFILE=/var/run/led-daemon.pid
+
+do_start()
+{
+    start-stop-daemon -S -p $LED_PIDFILE -b -m -x /sbin/led-daemon
+}
+
+do_stop()
+{
+    start-stop-daemon -K -p $LED_PIDFILE
+}
+
+do_start_stop "$1" led-daemon

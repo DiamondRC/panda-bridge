@@ -1,0 +1,20 @@
+# Files required to be installed for a standard network installation
+d 755 /etc/network
+d 755 /etc/network/if-pre-up.d
+d 755 /etc/network/if-up.d
+d 755 /etc/network/if-down.d
+d 755 /etc/network/if-post-down.d
+
+# Linked networking files
+l 777 /etc/resolv.conf          /var/run/network/resolv.conf
+l 777 /etc/ntp.conf             /var/run/network/ntp.conf
+l 777 /etc/network/interfaces   /var/run/network/interfaces
+
+# Location for our own udhcpc script
+d 755 /usr/share/udhcpc
+f 755 /usr/share/udhcpc/default.script default.script
+f 755 /usr/share/udhcpc/zcip.script zcip.script
+
+# Dropbear keys stored in /qspi
+l 777 /etc/dropbear/dropbear_rsa_host_key /qspi/dropbear_rsa_host_key
+l 777 /etc/dropbear/dropbear_dss_host_key /qspi/dropbear_dss_host_key

@@ -1,0 +1,10 @@
+# Network configuration
+
+option:
+	$(install-files) $(optiondir)/file-list
+	$(startup) $(optiondir)/parse-config S010
+	$(startup) $(optiondir)/initialise-keys S020
+	$(startup) $(optiondir)/network
+	$(startup) $(optiondir)/ntpd
+
+# vim: set filetype=make:

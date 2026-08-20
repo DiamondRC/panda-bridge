@@ -1,0 +1,26 @@
+# Kernel initramfs definition.  This is a minimal image with just enough to do
+# what we need to prepare to run the true system.
+
+PACKAGES += busybox
+busybox_VERSION = 1.23.2
+busybox_CONFIG = $(configdir)/busybox.config
+
+PACKAGES += e2fsprogs
+e2fsprogs_VERSION = 1.46.2
+e2fsprogs_INSTALL_FILES = /sbin/mkfs.ext4
+
+PACKAGES += zlib
+PACKAGES += mtd-utils
+mtd-utils_VERSION = 2.1.2
+mtd-utils_INSTALL_FILES = flash_erase
+
+# This is a bare bones install which only executes an init script before calling
+# pivot_root.
+SKELETON = $(configdir)/file-list
+OPTIONS = ldconfig
+EXTRA_LIBS =
+
+# We use the led-daemon during startup
+OPTIONS += $(configdir)/../rootfs/led-daemon
+
+# vim: set filetype=make:
