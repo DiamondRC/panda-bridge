@@ -4,7 +4,9 @@
 #include "lqrbridge/transport/mmio/hw_bus.hpp"
 #include "lqrbridge/transport/mmio/mmio_transport.hpp"
 #include "lqrbridge/publisher.hpp"
+#include "lqrbridge/control/optimiser.hpp"
 #include "lqrbridge/fixed_point/format.hpp"
+#include "lqrbridge/control/state_source.hpp"
 
 #include <array>
 #include <atomic>
@@ -22,6 +24,7 @@ extern "C" void log_message(const char *message, ...);
 namespace {
 
     constexpr std::size_t N = 4; // test frame width
+    constexpr std::size_t N_AX = 3; // axes
     constexpr int BRIDGE_CPU  = 1; // the isolated RT core
     constexpr int BRIDGE_PRIO = 80; // SCHED_FIFO priority 1..99
     constexpr int K_PAGE_SIZE = 4096; // vpages
@@ -109,10 +112,13 @@ namespace {
         lqr::Publisher<lqr::MmioTransport<lqr::HwBus>, N> pub(transport);
 
         // tmp
-        std::array<double, N> gains = { 1.0, -1.0, 0.5, -0.25 };
+        lqr::ConstantOptimiser<N> optimiser({1.0, -1.0, 0.5, -0.25});
+        lqr::ConstantStateSource<N_AX> source;
 
         while (!bridge_stop.load(std::memory_order_relaxed)) {
-            auto gen = pub.publish(gains, lqr::gain_q, lqr::Rounding::HalfAway);
+            const lqr::OperatingPoint op = source.read();
+            const auto k = optimiser.solve(op); // update gains
+            auto gen = pub.publish(k, lqr::gain_q, lqr::Rounding::HalfAway);
             if (gen) {
                 log_message("LQR bridge: published test frame, gen=%u",
                     static_cast<unsigned>(*gen));
