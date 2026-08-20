@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# Automount script for USB keys.  Mounts and unmounts USB keys.
+# The shape of this script was originally taken from
+#   https://wiki.gentoo.org/wiki/Mdev/Automount_USB/automount
+# but in the end the script is hugely simplified.  In particular, testing
+# DEVTYPE proves to be unreliable, in particular `mdev -s` doesn't set it!
+
+# This script is entered with the following state set:
+#   current directory = /dev
+#   MDEV = device node being created or deleted
+#   ACTION = device action.  We're interested in add and remove
+
+# Execute only if the device already exists; otherwise exit
+if [ ! -b "$MDEV" ] ; then exit 0 ; fi
+
+mount=/mnt/$MDEV
+
+case "$ACTION" in
+add)
+    # It's possible that the device is already mounted, in which case leave it
+    # alone.
+    if ! grep -q "^/dev/$MDEV " /proc/mounts; then
+        mkdir $mount
+        # Try the mount, if this fails don't leave the mount point behind.
+        mount /dev/$MDEV $mount  ||  rmdir $mount
+    fi
+    ;;
+remove)
+    # If the device is mounted remove it
+    if grep -q "^/dev/$MDEV " /proc/mounts; then
+        umount -f $mount
+    fi  &&
+    rmdir $mount
+    ;;
+esac

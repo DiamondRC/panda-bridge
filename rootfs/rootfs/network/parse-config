@@ -1,0 +1,161 @@
+#!/bin/sh
+
+# This script is run at startup to parse /boot/config.txt and configure the
+# network settings accordingly.
+
+VAR=/var/run/network
+CONFIG_FILE=/boot/config.txt
+
+get_mac_address()
+{
+    # we default to PandABox way (for backward compatibility)
+    cat /qspi/MAC
+}
+
+[ -e /boot/target-defs ] && source /boot/target-defs
+
+# As a network fallback measure, if there is a USB key containing a file named
+# panda-config.txt in its root, then use that instead of the default config
+# file.
+#   Unfortunately, it can take some time for the USB hot-plug process to finish
+# resolving, and all we can do is wait.  It takes about a second to show in lsusb 
+# then another to mount it, so 4s should be long enough to wait to check.
+# Wait for hot-plug to finish mounting.
+sleep 4
+
+# Search for an alternative config.txt file.
+for config in /mnt/*/panda-config.txt; do
+    if [ -e $config ]; then
+        echo Using alternate config file $config
+        CONFIG_FILE=$config
+        break
+    fi
+done
+echo "$CONFIG_FILE" >/tmp/config_file
+
+
+# Returns the corresponding config file entry, or an empty string if not
+# present.
+parse_config()
+{
+    # Extract file entry removing leading and trailing whitespace
+    # and windows line endings
+    local config="$(
+        sed -n "/^[ \t]*$1[ \t]*=[ \t]*/{s///;s/[ \t]*\r*$//;p}" <"$CONFIG_FILE")"
+    printf %s "$config"
+    [ -n "$config" ]
+}
+
+
+# Converts a dotted IP address into the corresponding number
+dotted_to_ip()
+{
+    local ip=0
+    local IFS=.
+    local octet
+    for octet in $1; do
+        ip=$(((ip << 8) | (octet & 0xff)))
+    done
+    echo $ip
+}
+
+# Converts a number to the corresponding dotted IP address
+ip_to_dotted()
+{
+    local n
+    local sep=
+    for n in 24 16 8 0; do
+        printf %s%d "$sep" $((($1>>n) & 0xff))
+        sep=.
+    done
+}
+
+compute_network()   { ip_to_dotted $(($1 & $2)); }
+compute_broadcast() { ip_to_dotted $(($1 | ~$2)); }
+
+
+# First set the MAC address
+MAC="$(get_mac_address)"
+[ -n "$MAC" ] && ifconfig eth0 hw ether "$MAC"
+
+
+mkdir -p $VAR
+
+# Prepare the interfaces file.
+{
+    cat <<EOF
+auto lo
+iface lo inet loopback
+
+auto eth0
+EOF
+
+    if ADDRESS="$(parse_config ADDRESS)"  &&
+       NETMASK="$(parse_config NETMASK)"
+    then
+        address=$(dotted_to_ip $ADDRESS)
+        netmask=$(dotted_to_ip $NETMASK)
+        cat <<EOF
+iface eth0 inet static
+    address $ADDRESS
+    netmask $NETMASK
+    network $(compute_network $address $netmask)
+    broadcast $(compute_broadcast $address $netmask)
+EOF
+
+        # Add gateway if specified
+        GATEWAY="$(parse_config GATEWAY)"  &&
+        echo "    gateway $GATEWAY"
+    else
+        echo 'iface eth0 inet dhcp'
+        echo -n '    udhcpc_opts -t 10 -O search'
+        if HOSTNAME="$(parse_config HOSTNAME)"; then
+            # Send hostname to DHCP server
+            echo -n " -x hostname:$HOSTNAME"
+        else
+            # Ask for hostname from DHCP server
+            echo -n ' -O hostname'
+        fi
+        if ! NTP="$(parse_config NTP)"; then
+            # Ask for NTP servers from DHCP server
+            echo -n ' -O ntpsrv'
+        fi
+        echo
+    fi
+} >$VAR/interfaces
+
+
+if HOSTNAME="$(parse_config HOSTNAME)"; then
+    hostname "$HOSTNAME"
+else
+    hostname panda
+fi
+
+
+{
+    if NTP="$(parse_config NTP)"; then
+        echo '# Using configured NTP server(s)'
+        for server in $NTP; do
+            echo server $server
+        done
+    else
+        cat <<EOF
+# Using pool.ntp.org NTP servers
+server 0.pool.ntp.org
+server 1.pool.ntp.org
+server 2.pool.ntp.org
+server 3.pool.ntp.org
+EOF
+    fi
+} >$VAR/ntp.conf
+
+
+DNS="$(parse_config DNS)"  &&
+{
+    DNS_SEARCH="$(parse_config DNS_SEARCH)"  &&
+    echo search $DNS_SEARCH
+
+    for server in $DNS; do
+        echo nameserver $server
+    done
+} >$VAR/resolv.conf

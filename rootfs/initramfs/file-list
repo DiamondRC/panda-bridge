@@ -1,0 +1,33 @@
+# Minimal file system for initramfs.
+
+d 755 /bin
+d 755 /dev
+d 755 /etc
+d 755 /lib
+d 555 /proc
+d 755 /sys
+d 755 /sbin
+d 1777 /tmp
+d 755 /usr
+d 755 /usr/bin
+d 755 /usr/sbin
+
+c 600 /dev/console 5 1
+
+# Mount points
+d 755 /rootfs
+d 755 /boot
+d 755 /qspi
+
+# fsck wants an fstab!
+f 644 /etc/fstab fstab
+l 777 /etc/mtab /proc/mounts
+
+# The LED server needs the init skeleton and /var/run
+d 755 /etc/init.d
+d 755 /etc/rc.d
+d 755 /var
+d 755 /var/run
+
+# Finally install our init script
+f 755 /init

@@ -1,0 +1,12 @@
+# Administration interface for PandA packages
+
+INETD_CONF = 80 stream tcp nowait root \
+    /usr/share/web-admin/admin-pipe.sh admin-pipe
+
+option:
+	$(install-files) $(optiondir)/file-list
+	echo '$(INETD_CONF)' >>$(sysroot)/etc/inetd.conf
+	rst2pdf $(optiondir)/../../docs/how-to/quickstart.md \
+	    -o $(sysroot)/usr/share/web-admin/static/network-quickstart.pdf
+
+# vim: set filetype=make:
