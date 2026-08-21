@@ -1,0 +1,39 @@
+on:
+  workflow_call:
+
+# cocotb simulations on a plain GitHub runner, driven through uv (which provisions cocotb
+# + the harness deps from pyproject.toml + uv.lock). Replaces the `docker run
+# pandablocks-dev-container` wrapper. The tests drive the NVC VHDL simulator
+# (SIMULATOR = nvc in the Makefile), so install nvc (mirrored in the repo Dockerfile) and
+# create a writable /build for the build outputs.
+jobs:
+  cocotb_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v5
+        with:
+          # full history to derive the version number from the last tag
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install nvc (VHDL simulator the cocotb tests drive)
+        run: sudo apt-get update && sudo bash .github/scripts/install_nvc.sh
+
+      - name: Run cocotb tests
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /build && sudo chmod -R 777 /build
+          ln -s CONFIG.example CONFIG
+          uv run --locked make cocotb_tests
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+          name: nvc-coverage
+          files: cocotb_coverage.xml
+        # env:
+        #   CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

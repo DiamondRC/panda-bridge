@@ -1,0 +1,14 @@
+LUT                 Lookup table
+    INPA                Input A
+    INPB                Input B
+    INPC                Input C
+    INPD                Input D
+    INPE                Input E
+    TYPEA               Source of the value of A for calculation
+    TYPEB               Source of the value of B for calculation
+    TYPEC               Source of the value of C for calculation
+    TYPED               Source of the value of D for calculation
+    TYPEE               Source of the value of E for calculation
+    FUNC                Input func
+    OUT                 Lookup table output
+

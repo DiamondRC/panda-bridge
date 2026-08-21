@@ -1,0 +1,26 @@
+/CONFIG
+/build
+/docs/build
+*.pyc
+*~
+/build_*
+*.jou
+*.log
+.Xil
+
+# virtual environment folder
+/venv
+.idea
+
+# uv-managed virtual environment + tool caches
+/.venv
+.ruff_cache/
+
+# For mac
+*.DS_Store
+
+# cocotb build dir
+sim_build*
+
+# MyST build output (includes timing_plot's rendered SVGs under _build/timing/)
+docs/_build/
