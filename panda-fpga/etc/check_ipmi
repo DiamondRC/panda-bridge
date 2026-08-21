@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+# Validates FMC IPMI EEPROM against the expected configuration
+from __future__ import print_function
+
+import sys
+import errno
+from i2c import ini_file, eeprom, parse_ipmi
+
+IPMI_INI = '/opt/share/panda-fpga/ipmi.ini'
+
+
+ini = ini_file.load_ini_file(IPMI_INI)
+
+# Read the eeprom key from the [.] section, default to "required" if missing
+try:
+    eeprom_key = ini['.']['eeprom']
+except KeyError:
+    eeprom_key = 'required'
+
+
+if eeprom_key == 'ignore':
+    # No FMC card fitted, or FMC has no EEPROM.  Just ignore the EEPROM
+    print('Ignoring IPMI EEPROM')
+    sys.exit(0)
+
+# We expect the EEPROM to be present.  First try to read it.
+try:
+    image = eeprom.read_eeprom()
+except OSError as e:
+    if e.errno == errno.ENXIO:  # No such device or address (i.e. no FMC EEPROM detected)
+        print('FMC was expected but none detected')
+        sys.exit(1)
+    else:
+        print('Unable to read FMC EEPROM:', e)
+        sys.exit(1)
+except Exception as e:
+    print('Unable to read FMC EEPROM:', e)
+    sys.exit(1)
+
+# Now try to parse the image we've just read
+try:
+    ipmi = parse_ipmi.parse(image)
+except Exception as e:
+    print('Error parsing FMC EEPROM:', e)
+    sys.exit(1)
+
+# Finally check the parse against the ini file
+try:
+    ini_file.compare_ini(ini, ipmi, ignore = ['.'])
+except ini_file.CompareFail as e:
+    print('FMC EEPROM mismatch:', e)
+    sys.exit(1)
+
+# If we get this far then all is well!
+print('FMC EEPROM matches')
+sys.exit(0)

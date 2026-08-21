@@ -1,0 +1,72 @@
+# This script installs files into the extensions directory
+
+import fnmatch
+import os.path
+import shutil
+import sys
+
+from .ini_util import ini_get, read_ini
+
+
+def get_modules(ini):
+    for section in ini.sections():
+        if section != '.':
+            module_name = ini_get(ini, section, 'module', section.lower())
+            block_name = ini_get(ini, section, 'block', module_name)
+            ini_file  = ini_get(ini, section, 'ini', '%s.block.ini' % module_name)
+            yield module_name, block_name, ini_file
+
+
+def get_extension(base_dir, module, ini_file):
+    ini_file = os.path.join(base_dir, ini_file)
+    ini = read_ini(ini_file)
+    extension = ini_get(ini, '.', 'extension', None)
+    if extension is not None:
+        if not extension:
+            extension = ini.get('.', 'entity')
+    return extension
+
+
+def add_extension(target_dir, source_dir, extension):
+    print ('Adding extension', extension)
+    extensions_dir = os.path.join(source_dir, 'extensions')
+    files = fnmatch.filter(os.listdir(extensions_dir), '*.py')
+    assert '%s.py' % extension in files, \
+        'Extension module %s.py not found' % extension
+    for file in files:
+        shutil.copy(os.path.join(extensions_dir, file), target_dir)
+
+
+def process_ini(extensions, blocks_dir, ini):
+    for module, block, ini_file in get_modules(ini):
+        base_dir = os.path.join(blocks_dir, module)
+        extension = get_extension(base_dir, block, ini_file)
+        if extension:
+            add_extension(extensions, base_dir, extension)
+
+
+def touch(path):
+    with open(path, 'a'):
+        os.utime(path, None)
+
+
+def main():
+    top = sys.argv[1]
+    app_file = sys.argv[2]
+    target = sys.argv[3]
+    extensions = sys.argv[4]
+
+    target_dir = os.path.join(top, 'targets', target)
+    modules_dir = os.path.join(top, 'modules')
+    touch(os.path.join(extensions, '__init__.py'))
+    target_ini = read_ini(os.path.join(target_dir, '%s.target.ini' % target))
+    app_ini = read_ini(app_file)
+
+    # Pull in extension files from both modules
+    #process_ini(extensions, os.path.join(target_dir, 'blocks'), target_ini)
+    process_ini(extensions, modules_dir, target_ini)
+    process_ini(extensions, modules_dir, app_ini)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,76 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library work;
+use work.addr_defines.all;
+use work.top_defines.all;
+
+entity panda_busses is
+port (
+
+{%  for name, block in blocks.iteritems() %}
+{%      if name != 'FMC' and name != 'SFP' %}
+    -- {{name}} Block
+{%          for fieldname, field in block.fields.iteritems() %}
+{%              if field.cls == 'bit_out' %}
+    {{name}}_{{field.name}}   : in std_logic_vector({{block.num-1}} downto 0);
+{%              elif field.cls == 'pos_out' %}
+    {{name}}_{{field.name}}   : in std32_array({{block.num-1}} downto 0);
+{%              endif %}
+{%          endfor %}
+{%      endif %}
+{%  endfor %}
+    -- Generic Inputs to BitBus and PosBus from FMC and SFP
+    fmc_inputs_i        : in  std_logic_vector(15 downto 0);
+    fmc_data_i          : in  std32_array(15 downto 0);
+    sfp_inputs_i        : in  std_logic_vector(15 downto 0);
+    sfp_data_i          : in  std32_array(15 downto 0);
+    -- Bus Outputs
+    bit_bus_o            : out std_logic_vector(127 downto 0);
+    pos_bus_o            : out std32_array(31 downto 0)
+);
+end panda_busses;
+
+architecture rtl of panda_busses is
+
+begin
+
+{% set bit_bus_counter = [] %}
+{% set pos_bus_counter = [] %}
+{%  for name, block in blocks.iteritems() %}
+-- {{name}} Outputs:
+{%      for fieldname, field in block.fields.iteritems() %}
+{%          if field.cls == 'bit_out'%}
+{%              if name != 'FMC' %}
+{%                  set bit_bus_counter = [] %}
+{%              endif %}
+{%              for register in field.reg %}
+{%                  if name == 'FMC' %}
+bit_bus_o({{register}}) <= fmc_inputs_i({{bit_bus_counter|length}});
+{%                  elif name == 'SFP' %}
+{%                  else %}
+bit_bus_o({{register}}) <= {{name}}_{{field.name}}({{bit_bus_counter|length}});
+{%                  endif  %}
+{%                  do bit_bus_counter.append('1') %}
+{%              endfor %}
+{%          elif field.cls == 'pos_out'%}
+{%              if name != 'FMC' %}
+{%                  set pos_bus_counter = [] %}
+{%              endif %}
+{%              for register in field.reg %}
+{%                  if name == 'FMC' %}
+pos_bus_o({{register}}) <= fmc_data_i({{pos_bus_counter|length}});
+{%                  elif name == 'SFP' %}
+{%                  else %}
+pos_bus_o({{register}}) <= {{name}}_{{field.name}}({{pos_bus_counter|length}});
+{%                  endif  %}
+{%                  do pos_bus_counter.append('1') %}
+{%              endfor %}
+{%          endif %}
+{%      endfor %}
+
+{%  endfor %}
+
+
+end rtl;

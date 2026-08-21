@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+# Dumps IPMI EEPROM in readable format
+
+import sys
+import argparse
+
+from i2c import eeprom, parse_ipmi
+
+parser = argparse.ArgumentParser(description = 'Dump FMC IPMI EEPROM')
+parser.add_argument(
+    '-b', '--binary', action = 'store_true', default = False,
+    help = 'Dump raw EEPROM image')
+args = parser.parse_args()
+
+
+image = eeprom.read_eeprom()
+if args.binary:
+    image.tofile(sys.stdout)
+else:
+    parse_ipmi.parse(image).emit()
