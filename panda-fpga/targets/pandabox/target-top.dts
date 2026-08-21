@@ -8,11 +8,23 @@
 		serial0 = &uart1;
 	};
 	chosen {
-		bootargs = "console=ttyPS0,115200 root=/dev/ram rw earlyprintk";
+		bootargs = "console=ttyPS0,115200 root=/dev/ram rw earlyprintk isolcpus=1 nohz_full=1 rcu_nocbs=1";
 	};
 	memory {
 		device_type = "memory";
 		reg = <0x0 0x40000000>;
+	};
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		/*
+		 * ACP state snapshot. 64 KiB at the top of the 1 GiB DDR.
+		 */
+		lqr_state: lqr-state@3fff0000 {
+			reg = <0x3fff0000 0x10000>;
+		};
 	};
 	usb_phy0: phy0 {
 		compatible = "ulpi-phy";
