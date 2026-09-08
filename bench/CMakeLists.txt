@@ -9,3 +9,4 @@ endfunction()
 
 tick_bench(bench_smoke)
 tick_bench(bench_quantise)
+tick_bench(bench_read)
