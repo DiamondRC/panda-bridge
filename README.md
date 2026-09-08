@@ -19,3 +19,8 @@ Containerised C++26 (GCC 15 / Clang, `-std=c++2c`).
 ```sh
 `cmake --build build/asan && ctest --preset asan --output-on-failure`
 ```
+
+```sh
+g++ -O3 ./bench/bench_quantise.cpp -I ./include/ -std=c++23
+./a.out
+```

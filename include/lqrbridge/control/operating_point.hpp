@@ -5,7 +5,9 @@
 namespace lqr {
     struct OperatingPoint {
         std::uint32_t stamp = 0;
-        std::span<const float> pv; // measured [pos, vel, ...]
-        std::span<const float> sp; // setpoints [set_p, set_v, ...]
+        std::span<const float> pos; // measured position / axis
+        std::span<const float> vel; // measured velocity / axis
+        std::span<const float> set_p; // setpoint position / axis
+        std::span<const float> set_v; // setpoint velocity / axis
     };
 }
