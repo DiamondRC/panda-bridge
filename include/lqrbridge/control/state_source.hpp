@@ -17,21 +17,28 @@ namespace lqr {
     // Stub: fixed states + fake monotonic counter
     template <std::size_t N_AX>
     class ConstantStateSource {
-            std::array<float, N_AX> pv_{};
-            std::array<float, N_AX> sp_{};
+            std::array<float, N_AX> pos_{};
+            std::array<float, N_AX> vel_{};
+            std::array<float, N_AX> setp_{};
+            std::array<float, N_AX> setv_{};
             std::uint32_t stamp_ = 0;
         public:
             constexpr ConstantStateSource() noexcept = default;
 
             constexpr ConstantStateSource(
-                std::array<float, N_AX> pv,
-                std::array<float, N_AX> sp
-            ) noexcept : pv_(pv), sp_(sp) {}
+                std::array<float, N_AX> pos,
+                std::array<float, N_AX> vel,
+                std::array<float, N_AX> setp,
+                std::array<float, N_AX> setv
+            ) noexcept : pos_(pos), vel_(vel), setp_(setp), setv_(setv) {}
 
             [[nodiscard]] OperatingPoint read() noexcept {
                 ++stamp_; // Fresh snapshot per tick
                 // return by value, copies the views not the data
-                return OperatingPoint{.stamp = stamp_, .pv = pv_, .sp = sp_};
+                return OperatingPoint{
+                    .stamp = stamp_,
+                    .pos = pos_, .vel = vel_, .set_p = setp_, .set_v = setv_
+                };
             }
     };
 }

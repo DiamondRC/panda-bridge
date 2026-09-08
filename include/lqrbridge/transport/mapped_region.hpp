@@ -99,6 +99,9 @@ namespace lqr {
         [[nodiscard]] const volatile std::uint32_t* words() const noexcept {
             return static_cast<const volatile std::uint32_t*>(base_);
         }
+        [[nodiscard]] std::uint32_t word(std::size_t i) const noexcept {
+            return static_cast<const volatile std::uint32_t*>(base_)[i];
+        }
         [[nodiscard]] std::size_t size() const noexcept {
             return len_;
         }

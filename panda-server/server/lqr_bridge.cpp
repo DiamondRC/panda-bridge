@@ -1,6 +1,8 @@
 #include "lqr_bridge.h"
 #include "lqr_resolve.h"
 
+#include "lqrbridge/state_abi.hpp"
+#include "lqrbridge/transport/mapped_region.hpp"
 #include "lqrbridge/transport/mmio/hw_bus.hpp"
 #include "lqrbridge/transport/mmio/mmio_transport.hpp"
 #include "lqrbridge/publisher.hpp"
@@ -10,8 +12,8 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <thread>
 #include <pthread.h>
 #include <sched.h>
@@ -28,15 +30,30 @@ namespace {
     constexpr int BRIDGE_CPU  = 1; // the isolated RT core
     constexpr int BRIDGE_PRIO = 80; // SCHED_FIFO priority 1..99
     constexpr int K_PAGE_SIZE = 4096; // vpages
+    constexpr std::size_t STACK_PREFAULT_BYTES = 64 * 1024; // TODO - profile
+    constexpr float STATE_SCALE = 1.0f / 1024.0f; // Q10 nm (STATE_F = 10)
 
-    std::thread bridge_thread; // bridge worekr
+    std::thread bridge_thread; // bridge worker
     std::atomic<bool> bridge_stop{false}; // cooperative stop flag
 
-    void configure_rt(void) {
-        // Pin LQR optimiser to isolated core
+    // Spin hint for the busy-poll wait on the dedicated core.
+    inline void cpu_relax(void) {
+        #if defined(__aarch64__) || defined(__arm__)
+            asm volatile("yield" ::: "memory");
+        #else
+            asm volatile("pause" ::: "memory");
+        #endif
+    }
+
+    // Configure the calling thread for RT. 
+    // Exit immediately if we can't get the deterministic setup
+    [[nodiscard]] bool configure_rt(void) {
+        bool ok = true;
+
+        // Pin to the isolated core
         cpu_set_t set; // CPU core bitmask
-        CPU_ZERO(&set); // clear btis
-        CPU_SET(BRIDGE_CPU, &set); // set nth bit - mask with only our core
+        CPU_ZERO(&set);
+        CPU_SET(BRIDGE_CPU, &set);
         if (
             int rc = pthread_setaffinity_np(
                 pthread_self(),
@@ -45,16 +62,11 @@ namespace {
             );
             rc != 0
         ) {
-            log_message(
-                "LQR bridge: affinity CPU%d failed: %s",
-                BRIDGE_CPU,
-                std::strerror(rc)
-            );
+            log_message("LQR bridge: affinity CPU%d failed: %s",
+                BRIDGE_CPU, std::strerror(rc));
+            ok = false;
         } else {
-            log_message(
-                "LQR bridge: pinned to CPU%d",
-                BRIDGE_CPU
-            );
+            log_message("LQR bridge: pinned to CPU%d", BRIDGE_CPU);
         }
 
         // Real-time scheduling
@@ -65,44 +77,42 @@ namespace {
                 pthread_self(),
                 SCHED_FIFO,
                 &sp
-            )
-        ) {
-            log_message(
-                "LQR bridge: SCHED_FIFO(%d) failed: %s (normal sched)",
-                BRIDGE_PRIO,
-                std::strerror(rc)
             );
+            rc != 0
+        ) {
+            log_message("LQR bridge: SCHED_FIFO(%d) failed: %s",
+                BRIDGE_PRIO, std::strerror(rc));
+            ok = false;
         } else {
             log_message("LQR bridge: SCHED_FIFO prio %d", BRIDGE_PRIO);
         }
 
-        // Lock all pages
+        // Lock all pages against demand paging
         if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-            log_message(
-                "LQR bridge: mlockall failed: %s",
-                std::strerror(errno)
-            );
+            log_message("LQR bridge: mlockall failed: %s", std::strerror(errno));
+            ok = false;
         } else {
             log_message("LQR bridge: memory locked");
         }
 
-        // Pre-fault stack pages so the hot loop never faults them in
-        unsigned char probe[16 * K_PAGE_SIZE];
+        // Pre-fault stack pages so the hot loop never faults them in. Touching
+        // this from configure_rt() backs the pages the loop + optimiser reuse;
+        // mlockall(MCL_FUTURE) keeps them resident.
+        unsigned char probe[STACK_PREFAULT_BYTES];
         for (std::size_t i = 0; i < sizeof(probe); i += K_PAGE_SIZE) {
-            // touch just one byte per page
-            probe[i] = 0;
+            probe[i] = 0; // one byte per page
         }
+        asm volatile("" :: "r"(probe) : "memory"); // defeat dead-store elision
 
-        // Compute the probes address and ahnd to the ASM
-        // The ASM is never discarded + allowed to r/w and memory =>
-        // all stores are commited and array cannot be cached/altered
-        asm volatile("" :: "r"(probe) : "memory");
+        return ok;
     }
 
-    // Pass coords by val => no lifetime dependancy to start's stack c
+    // Pass coords by val => no lifetime dependancy on start's stack.
     void bridge_loop(lqr_coords c) {
-        // Configure thread state
-        configure_rt();
+        if (!configure_rt()) {
+            log_message("LQR bridge: refusing to run without RT guarantees");
+            return;
+        }
 
         // Build out the transport chain from the resolved coords
         lqr::HwBus bus(c.block_base, c.block_number);
@@ -113,21 +123,44 @@ namespace {
 
         // tmp
         lqr::ConstantOptimiser<N> optimiser({1.0, -1.0, 0.5, -0.25});
-        lqr::ConstantStateSource<N_AX> source;
 
-        while (!bridge_stop.load(std::memory_order_relaxed)) {
-            const lqr::OperatingPoint op = source.read();
-            const auto k = optimiser.solve(op); // update gains
-            auto gen = pub.publish(k, lqr::gain_q, lqr::Rounding::HalfAway);
-            if (gen) {
-                log_message("LQR bridge: published test frame, gen=%u",
-                    static_cast<unsigned>(*gen));
-            } else {
-                log_message("LQR bridge: publish back-pressured (GEN not advanced)");
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // stand in for the servo-period
+        // Map the coherent state window
+        auto region = lqr::MappedRegion::map(
+            static_cast<std::uintptr_t>(c.state_phys),
+            static_cast<std::size_t>(c.state_bytes)
+        );
+        if (!region) {
+            log_message("LQR bridge: state map failed: %s",
+                region.error().message().c_str());
+            return; // no state => don't run the controller
         }
+        lqr::SeqlockStateSource<lqr::MappedRegion, N_AX> source {
+            std::move(*region), STATE_SCALE
+        };
+
+        // Busy-poll the servo tick on this dedicated core
+        // Only re-optimise on a fresh snapshot (stamp advances).
+        // Keep I/O off the hot path and report the tallies once, on stop.
+        std::uint32_t last_stamp = 0;
+        std::size_t published = 0;
+        std::size_t dropped = 0;
+        while (!bridge_stop.load(std::memory_order_relaxed)) {
+            if (source.peek_stamp() == last_stamp) {
+                cpu_relax(); // no new state yet - skip the full read/decode
+                continue;
+            }
+            const lqr::OperatingPoint op = source.read();
+            last_stamp = op.stamp;
+
+            const auto k = optimiser.solve(op); // update gains
+            if (pub.publish(k, lqr::gain_q, lqr::Rounding::HalfAway)) {
+                ++published;
+            } else {
+                ++dropped; // back-pressure: newest gains dropped
+            }
+        }
+        log_message("LQR bridge: stopped, published=%zu dropped=%zu",
+            published, dropped);
     }
 }
 

@@ -17,7 +17,7 @@ Containerised C++26 (GCC 15 / Clang, `-std=c++2c`).
 ## Build & test
 
 ```sh
-`cmake --build build/asan && ctest --preset asan --output-on-failure`
+cmake --build build/asan && ctest --preset asan --output-on-failure
 ```
 
 ```sh

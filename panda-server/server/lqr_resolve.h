@@ -4,6 +4,7 @@
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,9 @@ struct lqr_coords {
     unsigned int data;          // GAINS_DATA register
     unsigned int commit;        // COMMIT register
     unsigned int gen;           // GEN register
-};  
+    uint64_t state_phys;        // ACP state buffer base (DT: lqr-state)
+    uint64_t state_bytes;       // ACP state buffer size
+};
       
 /* Resolve the LQQR block + its GAINS/COMMIT/GEN fields.
  * On success, fills and returns true.
