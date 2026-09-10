@@ -33,13 +33,13 @@ auto make_source() {
 
     for (std::size_t k = 0; k < N_AX; ++k) {
         const std::size_t a = StateAbi::axis_off(k);
-        win[(a + StateAbi::pos_off) / 4]  = static_cast<std::uint32_t>(100 + k);
-        win[(a + StateAbi::vel_off) / 4]  = static_cast<std::uint32_t>(200 + k);
+        win[(a + StateAbi::pos_off) / 4] = static_cast<std::uint32_t>(100 + k);
+        win[(a + StateAbi::vel_off) / 4] = static_cast<std::uint32_t>(200 + k);
         win[(a + StateAbi::setp_off) / 4] = static_cast<std::uint32_t>(300 + k);
         win[(a + StateAbi::setv_off) / 4] = static_cast<std::uint32_t>(400 + k);
     }
     return SeqlockStateSource<BenchWindow<Words>, N_AX>{
-        std::move(win), 1.0f / 1024.0f};
+        std::move(win), StateAbi::export_scale};
 }
 
 template <std::size_t N_AX>

@@ -187,6 +187,45 @@ signal S_AXI_HP1_rready     : STD_LOGIC;
 signal S_AXI_HP1_rresp      : STD_LOGIC_VECTOR ( 1 downto 0 );
 signal S_AXI_HP1_rvalid     : STD_LOGIC;
 
+-- ACP write master (LQR state export -> L2). Write-only (AW/W/B); no read channel.
+signal acp                 : acp_ARR_REC(acp_ARR(0 to 0))
+                                        := (acp_ARR => (others => acp_init));
+signal S_AXI_ACP_awaddr     : std_logic_vector(31 downto 0);
+signal S_AXI_ACP_awvalid    : std_logic;
+signal S_AXI_ACP_awready    : std_logic;
+signal S_AXI_ACP_awid       : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_awlen      : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_awsize     : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_awburst    : std_logic_vector(1 downto 0);
+signal S_AXI_ACP_awlock     : std_logic_vector(1 downto 0);
+signal S_AXI_ACP_awcache    : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_awprot     : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_awqos      : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_awuser     : std_logic_vector(4 downto 0);
+signal S_AXI_ACP_wdata      : std_logic_vector(63 downto 0);
+signal S_AXI_ACP_wstrb      : std_logic_vector(7 downto 0);
+signal S_AXI_ACP_wvalid     : std_logic;
+signal S_AXI_ACP_wready     : std_logic;
+signal S_AXI_ACP_wlast      : std_logic;
+signal S_AXI_ACP_wid        : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_bvalid     : std_logic;
+signal S_AXI_ACP_bready     : std_logic;
+signal S_AXI_ACP_bresp      : std_logic_vector(1 downto 0);
+signal S_AXI_ACP_bid        : std_logic_vector(2 downto 0);
+-- Read channel unused (write-only master) but present on the PS ACP slave.
+signal S_AXI_ACP_araddr     : std_logic_vector(31 downto 0);
+signal S_AXI_ACP_arburst    : std_logic_vector(1 downto 0);
+signal S_AXI_ACP_arcache    : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_arid       : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_arlen      : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_arlock     : std_logic_vector(1 downto 0);
+signal S_AXI_ACP_arprot     : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_arqos      : std_logic_vector(3 downto 0);
+signal S_AXI_ACP_arsize     : std_logic_vector(2 downto 0);
+signal S_AXI_ACP_aruser     : std_logic_vector(4 downto 0);
+signal S_AXI_ACP_arvalid    : std_logic;
+signal S_AXI_ACP_rready     : std_logic;
+
 signal IRQ_F2P              : std_logic_vector(1 downto 0) := (others => '0');
 
 -- Configuration and Status Interface Block
@@ -454,7 +493,49 @@ port map (
     S_AXI_HP1_rlast             => S_AXI_HP1_rlast,
     S_AXI_HP1_rready            => S_AXI_HP1_rready,
     S_AXI_HP1_rresp             => S_AXI_HP1_rresp,
-    S_AXI_HP1_rvalid            => S_AXI_HP1_rvalid
+    S_AXI_HP1_rvalid            => S_AXI_HP1_rvalid,
+
+    S_AXI_ACP_awaddr            => S_AXI_ACP_awaddr,
+    S_AXI_ACP_awvalid           => S_AXI_ACP_awvalid,
+    S_AXI_ACP_awready           => S_AXI_ACP_awready,
+    S_AXI_ACP_awid              => S_AXI_ACP_awid,
+    S_AXI_ACP_awlen             => S_AXI_ACP_awlen,
+    S_AXI_ACP_awsize            => S_AXI_ACP_awsize,
+    S_AXI_ACP_awburst           => S_AXI_ACP_awburst,
+    S_AXI_ACP_awlock            => S_AXI_ACP_awlock,
+    S_AXI_ACP_awcache           => S_AXI_ACP_awcache,
+    S_AXI_ACP_awprot            => S_AXI_ACP_awprot,
+    S_AXI_ACP_awqos             => S_AXI_ACP_awqos,
+    S_AXI_ACP_awuser            => S_AXI_ACP_awuser,
+    S_AXI_ACP_wdata             => S_AXI_ACP_wdata,
+    S_AXI_ACP_wstrb             => S_AXI_ACP_wstrb,
+    S_AXI_ACP_wvalid            => S_AXI_ACP_wvalid,
+    S_AXI_ACP_wready            => S_AXI_ACP_wready,
+    S_AXI_ACP_wlast             => S_AXI_ACP_wlast,
+    S_AXI_ACP_wid               => S_AXI_ACP_wid,
+    S_AXI_ACP_bvalid            => S_AXI_ACP_bvalid,
+    S_AXI_ACP_bready            => S_AXI_ACP_bready,
+    S_AXI_ACP_bresp             => S_AXI_ACP_bresp,
+    S_AXI_ACP_bid               => S_AXI_ACP_bid,
+
+    S_AXI_ACP_araddr            => S_AXI_ACP_araddr,
+    S_AXI_ACP_arburst           => S_AXI_ACP_arburst,
+    S_AXI_ACP_arcache           => S_AXI_ACP_arcache,
+    S_AXI_ACP_arid              => S_AXI_ACP_arid,
+    S_AXI_ACP_arlen             => S_AXI_ACP_arlen,
+    S_AXI_ACP_arlock            => S_AXI_ACP_arlock,
+    S_AXI_ACP_arprot            => S_AXI_ACP_arprot,
+    S_AXI_ACP_arqos             => S_AXI_ACP_arqos,
+    S_AXI_ACP_arsize            => S_AXI_ACP_arsize,
+    S_AXI_ACP_aruser            => S_AXI_ACP_aruser,
+    S_AXI_ACP_arvalid           => S_AXI_ACP_arvalid,
+    S_AXI_ACP_arready           => open,
+    S_AXI_ACP_rready            => S_AXI_ACP_rready,
+    S_AXI_ACP_rdata             => open,
+    S_AXI_ACP_rid               => open,
+    S_AXI_ACP_rlast             => open,
+    S_AXI_ACP_rresp             => open,
+    S_AXI_ACP_rvalid            => open
 );
 
 ---------------------------------------------------------------------------
@@ -863,6 +944,45 @@ FMC_MGT_gen: for I in 0 to MAX_NUM_FMC_MGT-1 generate
     FMC_MGT.MGT_ARR(I).MAC_ADDR_WS <= '0';
 end generate;
 
+-- ACP write master: soft_blocks drives the master signals, consumes the ready/resp
+S_AXI_ACP_awvalid <= acp.acp_ARR(0).awvalid;
+S_AXI_ACP_awaddr  <= acp.acp_ARR(0).awaddr;
+S_AXI_ACP_awid    <= acp.acp_ARR(0).awid;
+S_AXI_ACP_awlen   <= acp.acp_ARR(0).awlen;
+S_AXI_ACP_awsize  <= acp.acp_ARR(0).awsize;
+S_AXI_ACP_awburst <= acp.acp_ARR(0).awburst;
+S_AXI_ACP_awcache <= acp.acp_ARR(0).awcache;
+S_AXI_ACP_awuser  <= acp.acp_ARR(0).awuser;
+S_AXI_ACP_awprot  <= acp.acp_ARR(0).awprot;
+S_AXI_ACP_awlock  <= acp.acp_ARR(0).awlock;
+S_AXI_ACP_awqos   <= acp.acp_ARR(0).awqos;
+S_AXI_ACP_wvalid  <= acp.acp_ARR(0).wvalid;
+S_AXI_ACP_wid     <= acp.acp_ARR(0).wid;
+S_AXI_ACP_wdata   <= acp.acp_ARR(0).wdata;
+S_AXI_ACP_wstrb   <= acp.acp_ARR(0).wstrb;
+S_AXI_ACP_wlast   <= acp.acp_ARR(0).wlast;
+S_AXI_ACP_bready  <= acp.acp_ARR(0).bready;
+
+acp.acp_ARR(0).awready <= S_AXI_ACP_awready;
+acp.acp_ARR(0).wready  <= S_AXI_ACP_wready;
+acp.acp_ARR(0).bvalid  <= S_AXI_ACP_bvalid;
+acp.acp_ARR(0).bresp   <= S_AXI_ACP_bresp;
+acp.acp_ARR(0).bid     <= S_AXI_ACP_bid;
+
+-- Read channel unused (write-only master): tie off the PS ACP read inputs.
+S_AXI_ACP_araddr  <= (others => '0');
+S_AXI_ACP_arburst <= (others => '0');
+S_AXI_ACP_arcache <= (others => '0');
+S_AXI_ACP_arid    <= (others => '0');
+S_AXI_ACP_arlen   <= (others => '0');
+S_AXI_ACP_arlock  <= (others => '0');
+S_AXI_ACP_arprot  <= (others => '0');
+S_AXI_ACP_arqos   <= (others => '0');
+S_AXI_ACP_arsize  <= (others => '0');
+S_AXI_ACP_aruser  <= (others => '0');
+S_AXI_ACP_arvalid <= '0';
+S_AXI_ACP_rready  <= '0';
+
 ---------------------------------------------------------------------------
 -- PandABlocks_top Instantiation (autogenerated!!)
 ---------------------------------------------------------------------------
@@ -894,7 +1014,8 @@ port map(
     rdma_done_irq => rdma_done_irq,
     FMC => FMC,
     SFP => SFP_MGT,
-    FMC_MGT => FMC_MGT
+    FMC_MGT => FMC_MGT,
+    acp => acp
 );
 
 end rtl;

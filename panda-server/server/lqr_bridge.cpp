@@ -31,7 +31,7 @@ namespace {
     constexpr int BRIDGE_PRIO = 80; // SCHED_FIFO priority 1..99
     constexpr int K_PAGE_SIZE = 4096; // vpages
     constexpr std::size_t STACK_PREFAULT_BYTES = 64 * 1024; // TODO - profile
-    constexpr float STATE_SCALE = 1.0f / 1024.0f; // Q10 nm (STATE_F = 10)
+    constexpr float STATE_SCALE = lqr::StateAbi::export_scale;
 
     std::thread bridge_thread; // bridge worker
     std::atomic<bool> bridge_stop{false}; // cooperative stop flag

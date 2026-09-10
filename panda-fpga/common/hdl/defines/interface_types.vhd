@@ -95,6 +95,56 @@ package interface_types is
     view MGT_MOD_ARR of MGT_ARR_REC is
         MGT_ARR: view (MGT_Module);
     end view;
+
+    -- ACP master interface (LQR state export -> PS7 S_AXI_ACP).
+    -- Flat leaves (not nested mosi/miso): a view-port selected name must stay
+    -- one level deep -- Vivado 2023.2 synth won't drill two levels into a view.
+    type acp_interface is record
+        -- master-driven
+        awvalid : std_logic;
+        awaddr  : std_logic_vector(31 downto 0);
+        awid    : std_logic_vector(2 downto 0);
+        awlen   : std_logic_vector(3 downto 0);
+        awsize  : std_logic_vector(2 downto 0);
+        awburst : std_logic_vector(1 downto 0);
+        awcache : std_logic_vector(3 downto 0);
+        awuser  : std_logic_vector(4 downto 0);
+        awprot  : std_logic_vector(2 downto 0);
+        awlock  : std_logic_vector(1 downto 0);
+        awqos   : std_logic_vector(3 downto 0);
+        wvalid  : std_logic;
+        wid     : std_logic_vector(2 downto 0);
+        wdata   : std_logic_vector(63 downto 0);
+        wstrb   : std_logic_vector(7 downto 0);
+        wlast   : std_logic;
+        bready  : std_logic;
+        -- slave-driven
+        awready : std_logic;
+        wready  : std_logic;
+        bvalid  : std_logic;
+        bresp   : std_logic_vector(1 downto 0);
+        bid     : std_logic_vector(2 downto 0);
+    end record;
+
+    view acp_module of acp_interface is
+        awvalid : out; awaddr : out; awid : out; awlen : out; awsize : out;
+        awburst : out; awcache : out; awuser : out; awprot : out; awlock : out;
+        awqos : out; wvalid : out; wid : out; wdata : out; wstrb : out;
+        wlast : out; bready : out;
+        awready : in; wready : in; bvalid : in; bresp : in; bid : in;
+    end view;
+
+    constant acp_init : acp_interface;
+
+    type acp_array is array (natural range <>) of acp_interface;
+
+    type acp_ARR_REC is record
+        acp_ARR : acp_array;
+    end record acp_ARR_REC;
+
+    view acp_MOD_ARR of acp_ARR_REC is
+        acp_ARR: view (acp_module);
+    end view;
 end;
 
 package body interface_types is
@@ -125,5 +175,32 @@ package body interface_types is
                                             TS_TICKS => (others => '0'),
                                             MAC_ADDR => (others => '0'),
                                             MAC_ADDR_WS => '0');
+
+    constant acp_init : acp_interface := (
+        awvalid => '0',
+        awaddr => (others => '0'),
+        awid => (others => '0'),
+        awlen => (others => '0'),
+        awsize => (others => '0'),
+        awburst => (others => '0'),
+        awcache => (others => '0'),
+        awuser => (others => '0'),
+        awprot => (others => '0'),
+        awlock => (others => '0'),
+        awqos => (others => '0'),
+
+        wvalid => '0',
+        wid => (others => '0'),
+        wdata => (others => '0'),
+        wstrb => (others => '0'),
+        wlast => '0',
+
+        bready => '0',
+        awready => '0',
+        wready => '0',
+        bvalid => '0',
+        bresp => (others => '0'),
+        bid => (others => '0')
+    );
 
 end;

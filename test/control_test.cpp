@@ -176,14 +176,16 @@ TEST_CASE("SeqlockStateSource applies the fixed-point scale") {
     win[StateAbi::seq_off / 4] = 2u;
     win[StateAbi::stamp_off / 4] = 1u;
     const std::size_t a = StateAbi::axis_off(0);
-    win[(a + StateAbi::pos_off) / 4] =
-        std::bit_cast<std::uint32_t>(std::int32_t{2048});
+    win[(a + StateAbi::pos_off) / 4] = std::bit_cast<std::uint32_t>(
+        std::int32_t{128}
+    );
 
+    // Q6
     SeqlockStateSource<ArrayWindow<Words>, N> src {
         std::move(win),
-        1.0f / 1024.0f
-    }; // Q10
-    CHECK(src.read().pos[0] == doctest::Approx(2.0)); // 2048 * 2^-10
+        StateAbi::export_scale
+    };
+    CHECK(src.read().pos[0] == doctest::Approx(2.0)); // 128 * 2^-6
 }
 
 TEST_CASE("SeqlockStateSource retries past an in-flight generation") {
@@ -194,13 +196,14 @@ TEST_CASE("SeqlockStateSource retries past an in-flight generation") {
     win[StateAbi::seq_off / 4] = 2u; // committed under the odd first peek
     win[StateAbi::stamp_off / 4] = 7u;
     const std::size_t a = StateAbi::axis_off(0);
-    win[(a + StateAbi::pos_off) / 4] =
-        std::bit_cast<std::uint32_t>(std::int32_t{42});
+    win[(a + StateAbi::pos_off) / 4] = std::bit_cast<std::uint32_t>(
+        std::int32_t{42}
+    );
 
     SeqlockStateSource<OneRetryWindow<Words>, N> src{std::move(win), 1.0f};
     const OperatingPoint op = src.read(); // odd first => spins once => committed
 
-    CHECK(op.stamp == 7u);      // returns the committed generation, not in-flight
+    CHECK(op.stamp == 7u); // returns the committed generation, not in-flight
     CHECK(op.pos[0] == 42.0f);
 }
 

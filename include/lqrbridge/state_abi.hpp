@@ -7,6 +7,10 @@ namespace lqr {
         static constexpr std::size_t beat_bytes = 8;
         static constexpr std::size_t line_bytes = 32; // A9 cache line
 
+        // States exported from the FPGA
+        static constexpr std::size_t export_frac = 6;
+        static constexpr float export_scale = 1.0f / static_cast<float>(1u << export_frac);
+
         // Line 0: seq word + allignment padding
         static constexpr std::size_t seq_off = 0;
 

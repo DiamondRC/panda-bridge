@@ -11,6 +11,7 @@ use ieee.std_logic_misc.all;
 
 library work;
 use work.top_defines.all;
+{% if interfaces %}use work.interface_types.all;{% endif %}
 
 
 entity {{ entity }}_wrapper is
@@ -29,6 +30,10 @@ port (
     -- Extra IOs
 {% for io in extra_ios %}
     {{ io[0] }} : {{ io[1] }} std_logic_vector(NUM-1 downto 0);
+{% endfor %}
+    -- Interface views (records carried up to the carrier/PS)
+{% for iface in interfaces %}
+    {{ iface[0] }} : view {{ iface[0] }}_module;
 {% endfor %}
 
     -- Bus outputs
@@ -97,7 +102,7 @@ begin
     read_data_o <= read_data(to_integer(unsigned(read_address_i(PAGE_AW-1 downto BLK_AW))));
 
     -- Generate NUM instances of the blocks
-    GEN : FOR I IN 0 TO (NUM-1) GENERATE
+    INST_GEN : FOR I IN 0 TO (NUM-1) GENERATE
 
         -- Sub-module address decoding
         read_strobe(I) <= compute_block_strobe(read_address_i, I) and read_strobe_i;
@@ -142,6 +147,9 @@ begin
         port map (
 {% for io in extra_ios %}
             {{ io[0] }} => {{ io[0] }}(I),
+{% endfor %}
+{% for iface in interfaces %}
+            {{ iface[0] }} => {{ iface[0] }},
 {% endfor %}
 {% for field in fields %}
     {% if field in filter_fields("bit_mux") %}

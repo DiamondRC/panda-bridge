@@ -1,0 +1,97 @@
+--------------------------------------------------------------------------------
+--  File:   mac_array.vhd
+--  Desc:   The orchestrator which drives the PandA MAC Engine.
+--  Author: richard.cunningham@diamond.ac.uk
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- The MAC Array
+--------------------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+-- use ieee.fixed_pkg.all;
+
+-- use work.panda_consts.all;
+-- use work.fp_utils.all;
+use work.num_utils.all;
+use work.matrix_consts.all;
+use work.mac_utils.all;
+
+entity mac_array is
+    generic (
+        G_ENGINES : positive := 1;
+        G_LANES : positive := 1;
+
+        -- TODO - generalise dims such that
+        -- each pipelined matrix array can 
+        -- have their own custom dimensions.
+        M : positive := 3;
+        N : positive := 3
+    );
+    port (
+        clk_i : in std_logic; -- PandA master clock
+        init_i : in std_logic; -- PandA reset
+
+        wr_addr_i : in unsigned(ceil_log2(M * N) - 1 downto 0);
+        wr_data_i : in signed(LANE_B_W - 1 downto 0);
+        wr_en_i : in std_logic;
+
+        commit_i : in std_logic;
+        gen_o : out unsigned(GEN_W - 1 downto 0);
+
+        x_i : in mac_data_vec(0 to N - 1);
+
+        start_i : in std_logic;
+
+        done_o : out std_logic := '0'; 
+        u_o : out mac_acc_vec(0 to M - 1) :=
+            (others => (others => '0'))
+
+    );
+end entity mac_array;
+
+architecture main of mac_array is
+
+begin
+    -- Instantiate the concentrated engine
+    gen_concentrated : if G_ENGINES = 1 generate
+        u_engine : entity work.mac_engine
+            generic map (
+                G_LANES => G_LANES,
+                M => M,
+                N => N
+            )
+            port map (
+                clk_i => clk_i,
+                init_i => init_i,
+
+                wr_addr_i => wr_addr_i,
+                wr_data_i => wr_data_i,
+                wr_en_i => wr_en_i,
+                commit_i => commit_i,
+                gen_o => gen_o,
+                x_i => x_i,
+
+                start_i => start_i,
+
+                done_o => done_o,
+                u_o => u_o
+            );
+    end generate;
+
+    -- Instantiate the parrallel engine
+    gen_pipelined : if G_ENGINES > 1 generate
+        -- Remember to remove when starting,
+        -- this will fail elaboration loudly!
+        constant unsupported : positive := 0;
+    begin
+        -- TODO
+        assert false
+            report "Pipelined topology not yet implemented"
+            severity failure;
+    end generate;
+
+end main;
