@@ -62,7 +62,7 @@ TEST_CASE("ConstantStateSource hands back seeded payload as views") {
     const std::array<float, 3> setv{10.0f, 11.0f, 12.0f};
     ConstantStateSource<3> src(pos, vel, setp, setv);
 
-    const OperatingPoint op = src.read();
+    const OperatingPoint op = src.read().value();
 
     REQUIRE(op.pos.size() == 3);
     REQUIRE(op.set_v.size() == 3);
@@ -76,9 +76,9 @@ TEST_CASE("ConstantStateSource hands back seeded payload as views") {
 TEST_CASE("ConstantStateSource stamp advances every read") {
     ConstantStateSource<3> src;
 
-    CHECK(src.read().stamp == 1u);
-    CHECK(src.read().stamp == 2u);
-    CHECK(src.read().stamp == 3u);
+    CHECK(src.read().value().stamp == 1u);
+    CHECK(src.read().value().stamp == 2u);
+    CHECK(src.read().value().stamp == 3u);
 }
 
 TEST_CASE("ConstantOptimiser returns fixed gains and ignores the operating point") {
@@ -90,7 +90,7 @@ TEST_CASE("ConstantOptimiser returns fixed gains and ignores the operating point
         {9.0f, 9.0f, 9.0f}
     );
 
-    const auto k = opt.solve(src.read());
+    const auto k = opt.solve(src.read().value());
 
     REQUIRE(k.size() == 4);
     CHECK(k[0] == 1.0);
@@ -105,7 +105,7 @@ TEST_CASE("ConstantOptimiser returns fixed gains and ignores the operating point
         {0.0f, 0.0f, 0.0f},
         {0.0f, 0.0f, 0.0f}
     );
-    const auto k2 = opt.solve(other.read());
+    const auto k2 = opt.solve(other.read().value());
     CHECK(k2[0] == 1.0);
     CHECK(k2[3] == -0.25);
 }
@@ -115,7 +115,7 @@ TEST_CASE("source -> optimiser -> publisher streams the quantised K") {
     ConstantStateSource<3> src;
     Publisher<MockTransport<4>, 4> pub{MockTransport<4>{}};
 
-    const OperatingPoint op = src.read();
+    const OperatingPoint op = src.read().value();
     const auto k = opt.solve(op);
     const auto gen = pub.publish(k, gain_q, Rounding::HalfAway);
 
@@ -155,7 +155,7 @@ TEST_CASE("SeqlockStateSource decodes a committed snapshot") {
         std::move(win),
         1.0f
     };
-    const OperatingPoint op = src.read();
+    const OperatingPoint op = src.read().value();
 
     CHECK(op.stamp == 1u);
     for (std::size_t k = 0; k < N; ++k) {
@@ -185,7 +185,7 @@ TEST_CASE("SeqlockStateSource applies the fixed-point scale") {
         std::move(win),
         StateAbi::export_scale
     };
-    CHECK(src.read().pos[0] == doctest::Approx(2.0)); // 128 * 2^-6
+    CHECK(src.read().value().pos[0] == doctest::Approx(2.0)); // 128 * 2^-6
 }
 
 TEST_CASE("SeqlockStateSource retries past an in-flight generation") {
@@ -201,7 +201,7 @@ TEST_CASE("SeqlockStateSource retries past an in-flight generation") {
     );
 
     SeqlockStateSource<OneRetryWindow<Words>, N> src{std::move(win), 1.0f};
-    const OperatingPoint op = src.read(); // odd first => spins once => committed
+    const OperatingPoint op = src.read().value(); // odd first => spins once => committed
 
     CHECK(op.stamp == 7u); // returns the committed generation, not in-flight
     CHECK(op.pos[0] == 42.0f);

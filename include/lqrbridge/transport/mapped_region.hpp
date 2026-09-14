@@ -70,7 +70,9 @@ namespace lqr {
         // Mapping factory
         [[nodiscard]] static std::expected<MappedRegion, std::error_code>
         map(std::uintptr_t phys, std::size_t len) noexcept {
-            const int fd = ::open("/dev/mem", O_RDONLY | O_CLOEXEC);
+            // O_RDWR to write the one-time invalid marker,
+            // O_SYNC is what would force a non-cacheable mapping.
+            const int fd = ::open("/dev/mem", O_RDWR | O_CLOEXEC);
             if (fd < 0) {
                 return std::unexpected(
                     std::error_code(errno, std::generic_category())
@@ -79,7 +81,7 @@ namespace lqr {
             void* const base = ::mmap(
                 nullptr,
                 len,
-                PROT_READ,
+                PROT_READ | PROT_WRITE,
                 MAP_SHARED,
                 fd,
                 static_cast<off_t>(phys)
@@ -101,6 +103,10 @@ namespace lqr {
         }
         [[nodiscard]] std::uint32_t word(std::size_t i) const noexcept {
             return static_cast<const volatile std::uint32_t*>(base_)[i];
+        }
+        // One-time seq=odd/stamp=0 before the first export.
+        void write_word(std::size_t i, std::uint32_t v) noexcept {
+            static_cast<volatile std::uint32_t*>(base_)[i] = v;
         }
         [[nodiscard]] std::size_t size() const noexcept {
             return len_;

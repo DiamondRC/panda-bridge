@@ -2,12 +2,14 @@
 #include "lqrbridge/control/operating_point.hpp"
 #include "lqrbridge/state_abi.hpp"
 #include "lqrbridge/transport/word_window.hpp"
+#include "lqrbridge/util/cpu_relax.hpp"
 
 #include <array>
 #include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace lqr {
     // Seqlock reader
@@ -45,32 +47,45 @@ namespace lqr {
         SeqlockStateSource(Win win, float scale) noexcept :
         win_(std::move(win)), scale_(scale) {}
 
-        [[nodiscard]] OperatingPoint read() noexcept {
-            std::uint32_t stamp = 0;
-            while (true) {
+        // Bounded: a failed export burst that leaves seq odd should
+        // not wedge this RT thread!
+        // Return nullopt after kMaxReadAttempts and let the caller
+        // hold last-K / consult EXPORT_STATUS.
+        static constexpr std::size_t kMaxReadAttempts = 8;
+
+        [[nodiscard]] std::optional<OperatingPoint> read() noexcept {
+            for (std::size_t attempt = 0; attempt < kMaxReadAttempts; ++attempt) {
                 const std::uint32_t s1 = win_.word(seq_i); // seq state before
-                if (s1 & 1u) { continue; } // odd -> mid-export
+                
+                // odd -> mid-export
+                if (s1 & 1u) {
+                    cpu_relax();
+                    continue;
+                }
 
                 std::atomic_thread_fence(std::memory_order_acquire); // DMB on ARM
-                stamp = win_.word(stamp_i);
+                const std::uint32_t stamp = win_.word(stamp_i);
                 decode();
                 std::atomic_thread_fence(std::memory_order_acquire);
 
-                if (win_.word(seq_i) == s1) { break; } // unchanged => consistent
+                if (win_.word(seq_i) == s1) { // unchanged => consistent
+                    return OperatingPoint {
+                        .stamp = stamp,
+                        .pos = pos_,
+                        .vel = vel_,
+                        .set_p = setp_,
+                        .set_v = setv_
+                    };
+                }
+                cpu_relax(); // writer collided mid-read, retry
             }
 
-            return OperatingPoint {
-                .stamp = stamp,
-                .pos = pos_,
-                .vel = vel_,
-                .set_p = setp_,
-                .set_v = setv_
-            };
+            // no consistent snapshot within the bound
+            return std::nullopt;
         }
 
-        // Cheap freshness probe: one aligned load of the stamp word, no seqlock.
-        // A busy-poll uses this to skip the full read() until state advances;
-        // consistency still comes from read().
+        // Cheap freshness check:
+        // one aligned load of the stamp word, no seqlock.
         [[nodiscard]] std::uint32_t peek_stamp() const noexcept {
             return win_.word(stamp_i);
         }

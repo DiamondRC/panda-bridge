@@ -6,12 +6,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <optional>
 
 namespace lqr {
     template <typename S>
     concept StateSource = requires(S s) {
-        // Read lastest state snapshot.
-        {s.read()} noexcept -> std::same_as<OperatingPoint>;
+        // Read latest state snapshot,
+        // nullopt if none was consistent.
+        { s.read() } noexcept -> std::same_as<std::optional<OperatingPoint>>;
     };
 
     // Stub: fixed states + fake monotonic counter
@@ -32,12 +34,15 @@ namespace lqr {
                 std::array<float, N_AX> setv
             ) noexcept : pos_(pos), vel_(vel), setp_(setp), setv_(setv) {}
 
-            [[nodiscard]] OperatingPoint read() noexcept {
+            [[nodiscard]] std::optional<OperatingPoint> read() noexcept {
                 ++stamp_; // Fresh snapshot per tick
                 // return by value, copies the views not the data
                 return OperatingPoint{
                     .stamp = stamp_,
-                    .pos = pos_, .vel = vel_, .set_p = setp_, .set_v = setv_
+                    .pos = pos_,
+                    .vel = vel_,
+                    .set_p = setp_,
+                    .set_v = setv_
                 };
             }
     };

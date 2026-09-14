@@ -9,6 +9,7 @@
 #include "lqrbridge/control/optimiser.hpp"
 #include "lqrbridge/fixed_point/format.hpp"
 #include "lqrbridge/control/state_source.hpp"
+#include "lqrbridge/util/cpu_relax.hpp"
 
 #include <array>
 #include <atomic>
@@ -32,18 +33,10 @@ namespace {
     constexpr int K_PAGE_SIZE = 4096; // vpages
     constexpr std::size_t STACK_PREFAULT_BYTES = 64 * 1024; // TODO - profile
     constexpr float STATE_SCALE = lqr::StateAbi::export_scale;
+    constexpr std::size_t kReadFailReport = 8; // consec read fails -> probe EXPORT_STATUS
 
     std::thread bridge_thread; // bridge worker
     std::atomic<bool> bridge_stop{false}; // cooperative stop flag
-
-    // Spin hint for the busy-poll wait on the dedicated core.
-    inline void cpu_relax(void) {
-        #if defined(__aarch64__) || defined(__arm__)
-            asm volatile("yield" ::: "memory");
-        #else
-            asm volatile("pause" ::: "memory");
-        #endif
-    }
 
     // Configure the calling thread for RT. 
     // Exit immediately if we can't get the deterministic setup
@@ -134,6 +127,15 @@ namespace {
                 region.error().message().c_str());
             return; // no state => don't run the controller
         }
+
+        // Mark the window "no valid export yet".
+        // Write an odd seq + zero stamp so a stale/garbage boot value
+        // can't be read as a consistent snapshot before the FPGA's first
+        // export closes the bracket.
+        constexpr std::size_t W = lqr::StateAbi::word_bytes;
+        region->write_word(lqr::StateAbi::seq_off / W, 1u);
+        region->write_word(lqr::StateAbi::stamp_off / W, 0u);
+
         lqr::SeqlockStateSource<lqr::MappedRegion, N_AX> source {
             std::move(*region), STATE_SCALE
         };
@@ -144,15 +146,30 @@ namespace {
         std::uint32_t last_stamp = 0;
         std::size_t published = 0;
         std::size_t dropped = 0;
+        std::size_t read_fail = 0;
         while (!bridge_stop.load(std::memory_order_relaxed)) {
             if (source.peek_stamp() == last_stamp) {
-                cpu_relax(); // no new state yet - skip the full read/decode
+                lqr::cpu_relax(); // no new export yet -> hold last K
                 continue;
             }
-            const lqr::OperatingPoint op = source.read();
-            last_stamp = op.stamp;
 
-            const auto k = optimiser.solve(op); // update gains
+            const auto op = source.read();
+            if (!op) { // torn / stuck export
+                lqr::cpu_relax();
+                if (++read_fail >= kReadFailReport) {
+                    const std::uint32_t st = bus.read32(c.export_status);
+                    log_message(
+                        "LQR bridge: seqlock read failed x%zu EXPORT_STATUS=%#x "
+                        "(busy=%u err=%u overrun=%u)",
+                        read_fail, st, st & 1u, (st >> 1) & 1u, (st >> 2) & 1u);
+                    read_fail = 0; // rate-limit the report
+                }
+                continue; // failure - do not advance last_stamp, do not publish
+            }
+            read_fail = 0;
+
+            last_stamp = op->stamp;
+            const auto k = optimiser.solve(*op); // update gains
             if (pub.publish(k, lqr::gain_q, lqr::Rounding::HalfAway)) {
                 ++published;
             } else {

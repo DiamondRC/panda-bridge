@@ -46,7 +46,7 @@ template <std::size_t N_AX>
 void run_read(const char* tag) {
     auto source = make_source<N_AX>();
     const auto s = measure([&] {
-        const OperatingPoint op = source.read();
+        const auto op = source.read();
         do_not_optimise(op);
         clobber_memory(); // force the decode stores + a re-read each iter
     });
