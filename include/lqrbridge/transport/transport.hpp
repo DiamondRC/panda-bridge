@@ -15,11 +15,6 @@ namespace lqr {
     // type width remains as the single point of truth not hardcoded val.
     inline constexpr Generation kGenMask = (Generation{1} << kGenWidth) - 1;
 
-    enum class Swap {
-        Confirmed,
-        TimedOut
-    };
-
     // Transport contract
     // Mirrors LQR VHDL to prevent tearing.
     template <typename T>
@@ -34,6 +29,15 @@ namespace lqr {
 
         // Last generation acknoledged to confirm swap processed.
         {t.generation()} noexcept -> std::same_as<Generation>;
+
+        // Re-adopt the FPGA's current generation after a reset
+        { t.resync() } noexcept -> std::same_as<void>;
+    };
+
+    enum class Swap {
+        Confirmed,
+        Pending,
+        Reset
     };
 
     template <Transport T>
@@ -42,12 +46,15 @@ namespace lqr {
         Generation expected,
         std::size_t max_polls
     ) noexcept {
-        for (std::size_t i = 0; i < max_polls; ++i) {
-            if (t.generation() == expected) {
-                return Swap::Confirmed;
-            }
+        for (std::size_t i = 0; i <= max_polls; ++i) {
+            const auto d = static_cast<std::int16_t>(
+                (t.generation() - expected) & kGenMask
+            );
+            if (d == 0) return Swap::Confirmed; // Swap in
+            if (d != -1) return Swap::Reset; // discontinuity
+            // else d == -1, keep polling
         }
-        return t.generation() == expected ? Swap::Confirmed : Swap::TimedOut;
+        return Swap::Pending;
     }
 
 }

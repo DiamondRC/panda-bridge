@@ -48,6 +48,8 @@ entity lqr_block is
 
         GEN : out std_logic_vector(31 downto 0); -- Read: generation tag
 
+        EXPORT_STATUS : out std_logic_vector(31 downto 0);
+
         u0_o : out std_logic_vector(31 downto 0); -- [U0] pos_out
         u1_o : out std_logic_vector(31 downto 0); -- [U1] pos_out
         u2_o : out std_logic_vector(31 downto 0); -- [U2] pos_out
@@ -100,6 +102,10 @@ architecture main of lqr_block is
     signal fill_valid : std_logic;
     signal fill_data : std_logic_vector(31 downto 0);
 
+    signal export_busy : std_logic;
+    signal export_err : std_logic;
+    signal export_overrun : std_logic;
+
 begin
 
     -- State inputs: sign-extend pos bus (32b) -> lanes (42b)
@@ -122,6 +128,16 @@ begin
 
     -- Generation tag: zero-extend (16b) -> readback reg (32b)
     GEN <= std_logic_vector(resize(gen_u, 32));
+
+    u_export_status : entity work.export_status_reg
+        port map (
+            clk_i => clk_i,
+            init_i => init_i,
+            busy_i => export_busy,
+            error_i => export_err,
+            overrun_i => export_overrun,
+            status_o => EXPORT_STATUS
+        );
 
     -- Gain-fill source: register-burst stream
     fill_start <= GAINS_START_WSTB;
@@ -175,6 +191,10 @@ begin
             commit_i => COMMIT_WSTB,
             gen_o => gen_u,
             u_o => u_vec,
+
+            export_err_o => export_err,
+            export_busy_o => export_busy,
+            export_overrun_o => export_overrun,
 
             m_axi_awvalid => acp.awvalid,
             m_axi_awready => acp.awready,

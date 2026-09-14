@@ -8,7 +8,7 @@
 		serial0 = &uart1;
 	};
 	chosen {
-		bootargs = "console=ttyPS0,115200 root=/dev/ram rw earlyprintk isolcpus=1 nohz_full=1 rcu_nocbs=1";
+		bootargs = "console=ttyPS0,115200 root=/dev/ram rw earlyprintk isolcpus=1 nohz_full=1 rcu_nocbs=1 irqaffinity=0";
 	};
 	memory {
 		device_type = "memory";

@@ -45,6 +45,14 @@ namespace lqr {
             }
         }
 
+        // Model a PandA reset: generation restarts, fill pointer + arm cleared.
+        // Lets a test force a mid-run desync.
+        void reset() noexcept {
+            gen_ = 0;
+            armed_ = false;
+            cnt_ = 0;
+        }
+
         // For inspection
         [[nodiscard]] Word at(std::size_t i) const noexcept { return bank_[i]; }
         [[nodiscard]] std::size_t count() const noexcept { return cnt_; }

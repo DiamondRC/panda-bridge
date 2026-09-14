@@ -111,12 +111,26 @@ static int __init l2_lockdown_init(void)
 	// Now lockdown ACP
 	set_master(acp_index, acp_mask);
 
-	// Verify the lockdown succeeded
-	pr_info("l2_lockdown: ACP idx %d -> D=%#04x I=%#04x; CPU mask %#04x on %d master(s)\n",
-		acp_index,
-		readl_relaxed(pl310 + L2X0_LOCKDOWN_D(acp_index)),
-		readl_relaxed(pl310 + L2X0_LOCKDOWN_I(acp_index)),
-		cpu_mask, cpu_count);
+	// Verify the ACP confinement.
+	// A non-secure L2 access silently drops the write,
+	// which would leave the RT set unprotected.
+	// Therefore, we fail loudly!
+	{
+		unsigned int d = readl_relaxed(pl310 + L2X0_LOCKDOWN_D(acp_index)) & L2X0_WAY_MASK;
+		unsigned int i2 = readl_relaxed(pl310 + L2X0_LOCKDOWN_I(acp_index)) & L2X0_WAY_MASK;
+		if (d != acp_mask || i2 != acp_mask) {
+			pr_err(
+				"l2_lockdown: ACP readback D=%#04x I=%#04x != mask %#04x. Writes are *NOT* taking effect! (non-secure L2?)\n",
+			    d, i2, acp_mask
+			);
+			set_master(acp_index, 0); // leave nothing half-applied
+			iounmap(pl310);
+			return -EIO;
+		}
+	}
+
+	pr_info("l2_lockdown: ACP idx %d confined to mask %#04x; CPU mask %#04x on %d master(s)\n",
+		acp_index, acp_mask, cpu_mask, cpu_count);
 
 	return 0;
 }

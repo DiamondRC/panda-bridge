@@ -29,7 +29,9 @@ namespace lqr {
         Reg reg_;
         Generation expected_ = 0;
     public:
-        MmioTransport(B bus, Reg reg) noexcept : bus_(bus), reg_(reg) {}
+        MmioTransport(B bus, Reg reg) noexcept :
+            // Seed expected value from hardware to prevent FPGA reset desyncing
+            bus_(bus), reg_(reg), expected_(bus_.read32(reg_.gen) & kGenMask) {}
 
         void stage(Frame f) noexcept {
             // Start pulse low
@@ -39,6 +41,14 @@ namespace lqr {
             for (Word w : f) {
                 bus_.write32(reg_.data,  w);
             }
+        }
+
+        // Re-sync the GEN counter with the FPGA.
+        // If the PandA experiences a reset we'll desync the two systems,
+        // thus we'll forever drop gains.
+        // Instead, if we experience too much backpressure we'll auto-resync.
+        void resync() noexcept {
+            expected_ = bus_.read32(reg_.gen) & kGenMask;
         }
 
         [[nodiscard]] Generation commit() noexcept {

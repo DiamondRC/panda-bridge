@@ -1,0 +1,69 @@
+# Trimmed PandABlocks-rootfs build image: kernel + minimal (busybox) rootfs only.
+#
+# Drops the ghdl/nvc/cocotb/sphinx + malcolm/annotypes/pymalcolm CI baggage that a
+# TARGET=minimal `make zips` never touches.
+# 
+# Build with context = the rootfs subtree:
+#   podman build --target kernelbuild -f Dockerfile.kernel -t panda-kernelbuild rootfs
+FROM rockylinux:8.5 as kernelbuild
+
+RUN yum -y install epel-release
+RUN yum -y upgrade && yum -y install \
+    bc \
+    bzip2 \
+    cpio \
+    diffutils \
+    expat-devel \
+    fakeroot \
+    git \
+    glibc-devel \
+    glibc-langpack-en \
+    gmp-devel \
+    libffi-devel \
+    libmpc-devel \
+    libuuid-devel \
+    lzop \
+    ncurses-devel \
+    openssl-devel \
+    patch \
+    python3 \
+    python3-devel \
+    readline-devel \
+    sudo \
+    unzip \
+    xz \
+    zlib-devel
+RUN yum -y group install "Development Tools"
+
+# Provisioning scripts first, then the two big fetches.
+# cache these layers so a later change to the rootfs subtree
+# doesn't need to re-download the toolchain/tarballs.
+COPY .github/scripts /scripts
+RUN bash /scripts/GNU-toolchain.sh # -> /gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf
+RUN bash /scripts/tar-files.sh # -> /tar-files (kernel, u-boot, busybox, ...)
+
+# tar-files.sh pulls libtool via a flaky ftpmirror.gnu.org redirect that can 404
+# (the rootfs toolkit build then fails "Unable to find tar file"). Fetch it direct.
+RUN curl -fL https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.gz -o /tar-files/libtool-2.4.6.tar.gz
+
+# Extra -devel deps for the u-boot/kernel tool builds.
+RUN yum -y install gnutls-devel elfutils-libelf-devel
+
+# web-admin builds a *cosmetic* quickstart PDF via rst2pdf during rootfs install.
+# The real tool needs a py3.12 docs stack (Pillow won't compile on Rocky's py3.6, and
+# it isn't in the repos). Stub it for this bring-up image -- CI's full image emits the
+# real PDF for release builds. The stub just creates the -o output so the step succeeds.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'while [ $# -gt 0 ]; do if [ "$1" = "-o" ]; then mkdir -p "$(dirname "$2")"; : > "$2"; shift 2; else shift; fi; done' \
+    'exit 0' \
+    > /usr/local/bin/rst2pdf && chmod +x /usr/local/bin/rst2pdf
+
+# The rootfs tree
+# (this subtree = the PandABlocks-rootfs repo, araneidae builder at ./rootfs).
+COPY . /rootfs
+RUN bash /scripts/config-file-rootfs.sh
+RUN git config --global --add safe.directory '*'
+
+WORKDIR /rootfs
+CMD ["/bin/bash"]

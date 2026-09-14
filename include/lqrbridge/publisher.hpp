@@ -26,6 +26,8 @@ namespace lqr {
         Generation last_ = 0;
         bool pending_ = false;
         std::atomic<std::size_t> dropped_ = 0;
+        std::size_t stalled_ = 0;
+        static constexpr std::size_t kResyncAfter = 16;
     public:
         explicit Publisher(T transport) noexcept : transport_(transport) {}
 
@@ -36,14 +38,26 @@ namespace lqr {
         ) noexcept {
             assert(gains.size() == N);
 
-            // Don't overwrite banks the PandA FPGA hasn't consumed
-            if (
-                pending_ && confirm(transport_, last_, 0) == 
-                Swap::TimedOut
-            ) {
-                // publish skipped by backpressure
-                dropped_.fetch_add(1, std::memory_order_relaxed);
-                return std::nullopt;
+            //
+            if (pending_) {
+                switch (confirm(transport_, last_, 0)) {
+                    case Swap::Confirmed:
+                        stalled_ = 0;
+                        break;
+                    case Swap::Reset:
+                        transport_.resync();
+                        stalled_ = 0;
+                        break;
+                    case Swap::Pending:
+                        // overflowing backpressure => resync
+                        if (++stalled_ < kResyncAfter) {
+                            dropped_.fetch_add(1, std::memory_order_relaxed);
+                            return std::nullopt;
+                        }
+                        transport_.resync();
+                        stalled_ = 0;
+                        break;
+                }
             }
 
             // Quantise into the owned scratch bank (gains -> scratch)

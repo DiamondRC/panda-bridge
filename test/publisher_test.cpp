@@ -88,3 +88,35 @@ TEST_CASE("Back-pressure blocks a publish over an unconsumed bank") {
     CHECK(pub.dropped() == 1u); // check if logged
     CHECK(pub.transport().bus().at(0) == 0x02000000u); // bank still holds k1, not k2
 }
+
+TEST_CASE("Mid-run PL reset is detected and recovered without a drop") {
+    auto pub = make();
+    const std::array<double, 3> k1{1.0, 1.0, 1.0};
+    const std::array<double, 3> k2{2.0, 2.0, 2.0};
+
+    // Get two generations in, in sync.
+    REQUIRE(pub.publish( // last_ = 1
+        k1, gain_q, Rounding::HalfAway
+    ).has_value());
+    pub.transport().bus().tick(); // gen_ = 1 (Confirmed)
+    REQUIRE(pub.publish( // last_ = 2
+        k1, gain_q, Rounding::HalfAway
+    ).has_value());
+    pub.transport().bus().tick(); // gen_ = 2
+
+    // PL INIT mid-run: generation restarts, banks wiped, last_ still 2.
+    pub.transport().bus().reset();
+
+    // confirm() sees d = 0 - 2 = -2 -> Swap::Reset -> resync + re-publish.
+    const auto g = pub.publish(
+        k2, gain_q, Rounding::HalfAway
+    );
+
+    REQUIRE(g.has_value()); // recovered, not dropped
+    CHECK(pub.dropped() == 0u); // detected in one tick, no wasted drops
+    CHECK(pub.transport().bus().at(0) == 0x04000000u); // k2 re-loaded into the wiped bank
+    CHECK(*g == 1u); // adopted gen 0, commit -> 1
+
+    pub.transport().bus().tick();
+    CHECK(pub.transport().generation() == 1u);     // back in sync
+}

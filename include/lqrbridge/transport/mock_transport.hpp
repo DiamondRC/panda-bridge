@@ -30,6 +30,9 @@ namespace lqr {
             ++stage_count_;
         }
 
+        // No-op in the mock
+        void resync() noexcept {}
+
         // Publish staged frame
         Generation commit() noexcept {
             // Only want to copy staged
