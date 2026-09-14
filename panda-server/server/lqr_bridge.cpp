@@ -15,12 +15,16 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <ratio>
 #include <thread>
 #include <pthread.h>
 #include <sched.h>
 #include <sys/mman.h>
 #include <cerrno>
 #include <cstring>
+#include <chrono>
+#include <algorithm>
+#include <limits>
 
 extern "C" void log_message(const char *message, ...);
 
@@ -34,9 +38,14 @@ namespace {
     constexpr std::size_t STACK_PREFAULT_BYTES = 64 * 1024; // TODO - profile
     constexpr float STATE_SCALE = lqr::StateAbi::export_scale;
     constexpr std::size_t kReadFailReport = 8; // consec read fails -> probe EXPORT_STATUS
+    constexpr double kCacheableRatioMax = 4.0; // window/heap read latency; >this => suspect
 
     std::thread bridge_thread; // bridge worker
     std::atomic<bool> bridge_stop{false}; // cooperative stop flag
+
+    // Startup cacheability probe result: window/heap read-latency ratio * 1000
+    // (-1 until probed). Read by lqr_bridge_cache_ratio_milli() for a status PV.
+    std::atomic<std::int32_t> cache_ratio_milli{-1};
 
     // Configure the calling thread for RT. 
     // Exit immediately if we can't get the deterministic setup
@@ -100,6 +109,43 @@ namespace {
         return ok;
     }
 
+    // One batch: window/heap read-latency ratio.
+    // Test if the mapped window is cacheable (~1) or if it silently went
+    // non-cacheable (>>1) into DDR.
+    // This would increase the cost of the computation by ~10x!
+    [[nodiscard]] double window_ratio_once(
+        const lqr::MappedRegion& region, std::size_t stamp_i) {
+        constexpr int kIters = 4096;
+        volatile std::uint32_t sink = 0;
+
+        std::uint32_t heap = 0;
+        volatile std::uint32_t* hp = &heap;
+        sink = *hp; // warm
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < kIters; ++i) { sink = *hp; }
+        const auto t1 = std::chrono::steady_clock::now();
+
+        sink = region.word(stamp_i); // warm
+        const auto t2 = std::chrono::steady_clock::now();
+        for (int i = 0; i < kIters; ++i) { sink = region.word(stamp_i); }
+        const auto t3 = std::chrono::steady_clock::now();
+        (void) sink;
+
+        const double heap_ns = std::chrono::duration<double, std::nano>(t1 - t0).count();
+        const double win_ns = std::chrono::duration<double, std::nano>(t3 - t2).count();
+        return heap_ns > 0.0 ? win_ns / heap_ns : 0.0;
+    }
+
+    // The fastest of N batches = least-perturbed = truest cache latency
+    [[nodiscard]] double window_ratio(
+        const lqr::MappedRegion& region, std::size_t stamp_i) {
+        double best = std::numeric_limits<double>::infinity();
+        for (int rep = 0; rep < 5; ++rep) {
+            best = std::min(best, window_ratio_once(region, stamp_i));
+        }
+        return best;
+    }
+
     // Pass coords by val => no lifetime dependancy on start's stack.
     void bridge_loop(lqr_coords c) {
         if (!configure_rt()) {
@@ -136,6 +182,23 @@ namespace {
         region->write_word(lqr::StateAbi::seq_off / W, 1u);
         region->write_word(lqr::StateAbi::stamp_off / W, 0u);
 
+        // On boot check if the window is actually cacheable.
+        // Warn loudly + publish a status if not.
+        const double ratio = window_ratio(
+            *region, lqr::StateAbi::stamp_off / W
+        );
+        cache_ratio_milli.store(
+            static_cast<std::int32_t>(ratio * 1000.0), std::memory_order_relaxed
+        );
+        log_message("LQR bridge: state-window read latency %.1fx heap", ratio);
+        if (ratio > kCacheableRatioMax) {
+            log_message(
+                "LQR bridge: WARNING state window looks NON-CACHEABLE "
+                "(%.1fx): check no-map / O_SYNC / STRICT_DEVMEM, "
+                "determinism + L2 lockdown are void", ratio
+            );
+        }
+
         lqr::SeqlockStateSource<lqr::MappedRegion, N_AX> source {
             std::move(*region), STATE_SCALE
         };
@@ -161,7 +224,8 @@ namespace {
                     log_message(
                         "LQR bridge: seqlock read failed x%zu EXPORT_STATUS=%#x "
                         "(busy=%u err=%u overrun=%u)",
-                        read_fail, st, st & 1u, (st >> 1) & 1u, (st >> 2) & 1u);
+                        read_fail, st, st & 1u, (st >> 1) & 1u, (st >> 2) & 1u
+                    );
                     read_fail = 0; // rate-limit the report
                 }
                 continue; // failure - do not advance last_stamp, do not publish
@@ -177,7 +241,8 @@ namespace {
             }
         }
         log_message("LQR bridge: stopped, published=%zu dropped=%zu",
-            published, dropped);
+            published, dropped
+        );
     }
 }
 
@@ -190,7 +255,8 @@ extern "C" void lqr_bridge_start(void)
     }
     log_message(
         "LQR bridge: resolved base=%u number=%u start=%u data=%u commit=%u gen=%u",
-        c.block_base, c.block_number, c.start, c.data, c.commit, c.gen);
+        c.block_base, c.block_number, c.start, c.data, c.commit, c.gen
+    );
 
     // Create the LQR bridge in it's own thread
     bridge_stop.store(false);
@@ -205,4 +271,9 @@ extern "C" void lqr_bridge_stop(void)
         bridge_thread.join();
     }
     log_message("LQR bridge: stopped");
+}
+
+// Health seam for a status PV / supervisor.
+extern "C" std::int32_t lqr_bridge_cache_ratio_milli(void) {
+    return cache_ratio_milli.load(std::memory_order_relaxed);
 }
