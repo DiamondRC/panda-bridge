@@ -70,7 +70,7 @@ kernel-build
 # (toolchain + source tarballs extracted from the kernel container)
 boot-deps
 
-# l2_lockdown kbuild artifacts (keep Kbuild/Makefile/l2_lockdown.c/README.md)
+# l2_lockdown kbuild artifacts
 kernel/l2_lockdown/*.ko
 kernel/l2_lockdown/*.mod*
 kernel/l2_lockdown/*.o

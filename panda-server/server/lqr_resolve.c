@@ -16,7 +16,7 @@
 #include "attributes.h"
 #include "fields.h"
 #include "lqr_resolve.h"
-    
+
 /* Device-tree property cells are big-endian regardless of the CPU. */
 static uint32_t be32(const uint8_t *p)
 {
@@ -72,18 +72,30 @@ bool lqr_resolve(struct lqr_coords *out)
 {
     struct block *block;
     unsigned int block_count;
-    struct field *gains, *commit, *gen;
-    unsigned int gains_regs[3], commit_regs[3], gen_regs[3];
-    size_t reg_count;
-        
+    struct field *gains, *commit, *gen, *status;
+    unsigned int gains_regs[3], commit_regs[3], gen_regs[3], status_regs[3];
+    size_t gains_count, commit_count, gen_count, status_count;
+
     error__t error =
-        lookup_block("LQR", &block, &block_count)  ?:
-        lookup_field(block, "GAINS",  &gains) ?:
+        lookup_block("LQR", &block, &block_count) ?:
+        lookup_field(block, "GAINS", &gains) ?:
         lookup_field(block, "COMMIT", &commit) ?:
-        lookup_field(block, "GEN",    &gen) ?:
-        get_field_registers(gains,  gains_regs,  &reg_count) ?:
-        get_field_registers(commit, commit_regs, &reg_count) ?:
-        get_field_registers(gen,    gen_regs,    &reg_count) ?:
+        lookup_field(block, "GEN", &gen) ?:
+        lookup_field(block, "EXPORT_STATUS", &status) ?:
+        get_field_registers(gains, gains_regs, &gains_count) ?:
+        get_field_registers(commit, commit_regs, &commit_count) ?:
+        get_field_registers(gen, gen_regs, &gen_count) ?:
+        get_field_registers(status, status_regs, &status_count) ?:
+        // Guard the indices we read below: a field reporting fewer registers
+        // would otherwise leave gains_regs[1] etc. uninitialised.
+        TEST_OK_(gains_count >= 2,
+            "LQR bridge: GAINS resolved %zu registers, need >= 2", gains_count) ?:
+        TEST_OK_(commit_count >= 1,
+            "LQR bridge: COMMIT resolved %zu registers, need >= 1", commit_count) ?:
+        TEST_OK_(gen_count >= 1,
+            "LQR bridge: GEN resolved %zu registers, need >= 1", gen_count) ?:
+        TEST_OK_(status_count >= 1,
+            "LQR bridge: EXPORT_STATUS resolved %zu registers, need >= 1", status_count) ?:
         set_field_read_only(gains)  ?: // bridge owns the gain stream
         set_field_read_only(commit);   // and the swap trigger
         
@@ -107,6 +119,7 @@ bool lqr_resolve(struct lqr_coords *out)
         .data         = gains_regs[1], // GAINS_DATA  (fill_reg)
         .commit       = commit_regs[0],
         .gen          = gen_regs[0],
+        .export_status = status_regs[0],
         .state_phys   = state_phys,
         .state_bytes  = state_bytes,
     };
