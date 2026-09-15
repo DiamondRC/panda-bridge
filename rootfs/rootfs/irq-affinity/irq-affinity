@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Steer device IRQs off CPU1 onto CPU0 so a hard IRQ can't preempt the
+# SCHED_FIFO servo loop. Catches IRQs that set their own affinity at
+# probe or register after boot.
+# Runs at S899, just before the LQR bridge (panda_server, S900),
+# by which point boot-time device IRQs are all registered.
+#
+# Per-CPU (local timer, IPIs) and kernel-managed IRQs reject the
+# write with EIO and are skipped - that is expected, not a failure.
+
+case "$1" in
+start | "")
+    # Default mask for IRQs registered after this point -> CPU0 (bit0).
+    echo 1 > /proc/irq/default_smp_affinity 2>/dev/null || true
+
+    # Existing IRQs -> CPU0.
+    for d in /proc/irq/*/smp_affinity_list; do
+        echo 0 > "$d" 2>/dev/null || true
+    done
+
+    echo "irq-affinity: device IRQs steered to CPU0"
+    ;;
+esac

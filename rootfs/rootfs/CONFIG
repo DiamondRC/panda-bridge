@@ -53,5 +53,6 @@ OPTIONS += $(configdir)/zpkg
 OPTIONS += $(configdir)/web-admin
 OPTIONS += $(configdir)/led-daemon
 OPTIONS += $(configdir)/target-specific
+OPTIONS += $(configdir)/irq-affinity
 
 # vim: set filetype=make:
