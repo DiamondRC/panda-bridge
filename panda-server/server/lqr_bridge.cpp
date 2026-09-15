@@ -3,6 +3,7 @@
 
 #include "lqrbridge/state_abi.hpp"
 #include "lqrbridge/gain_abi.hpp"
+#include "lqrbridge/gains/dmdc_gains.hpp"
 #include "lqrbridge/transport/mapped_region.hpp"
 #include "lqrbridge/transport/mmio/hw_bus.hpp"
 #include "lqrbridge/transport/mmio/mmio_transport.hpp"
@@ -10,6 +11,7 @@
 #include "lqrbridge/control/optimiser.hpp"
 #include "lqrbridge/fixed_point/format.hpp"
 #include "lqrbridge/control/state_source.hpp"
+#include "lqrbridge/control/seqlock_state_source.hpp"
 #include "lqrbridge/util/cpu_relax.hpp"
 
 #include <array>
@@ -40,14 +42,6 @@ namespace {
     constexpr float STATE_SCALE = lqr::StateAbi::export_scale;
     constexpr std::size_t kReadFailReport = 8; // consec read fails -> probe EXPORT_STATUS
     constexpr double kCacheableRatioMax = 4.0; // window/heap read latency; >this => suspect
-
-    // constexpr std::array<double, N> make_stub_gains() {
-    //     std::array<double, N> k{};
-    //     for (std::size_t i = 0; i < N; ++i) {
-    //         k[i] = (i % 2 == 0 ? 1.0 : -1.0) * 0.1 * static_cast<double>(i + 1);
-    //     }
-    //     return k;
-    // }
 
     std::thread bridge_thread; // bridge worker
     std::atomic<bool> bridge_stop{false}; // cooperative stop flag
@@ -169,8 +163,8 @@ namespace {
         lqr::MmioTransport<lqr::HwBus> transport(bus, reg);
         lqr::Publisher<lqr::MmioTransport<lqr::HwBus>, N> pub(transport);
 
-        // TODO - stub gains, replace with the optimiser
-        lqr::ConstantOptimiser<N> optimiser(make_stub_gains());
+        // Hardcoded static DMDc gains for bring-up.
+        lqr::ConstantOptimiser<N> optimiser(lqr::kDmdcGains);
 
         // Map the coherent state window
         auto region = lqr::MappedRegion::map(
