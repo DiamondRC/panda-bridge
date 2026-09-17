@@ -5,8 +5,9 @@ project(lqr_bridge
     DESCRIPTION "Low-latency PS->PL gain/weight bridge for the PandA LQR controller"
     LANGUAGES CXX)
 
-# C++26, no GNU extensions
-set(CMAKE_CXX_STANDARD 26)
+# C++23, no GNU extensions. Board target is the Yocto/meta-panda SDK (gcc-12,
+# no c++26); the bridge only needs experimental/simd + C++23, so hold at 23.
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

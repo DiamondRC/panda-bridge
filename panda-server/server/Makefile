@@ -92,9 +92,11 @@ sw_hardware.o: named_registers.h
 named_registers.h: named_registers.py $(TOP)/config_d/registers
 	$(PYTHON) $^ >$@
 
-# C++26 compile rules for the injected LQR optimiser
+# C++23 compile rule for the injected LQR optimiser.
+# Spelled c++2b (not c++23) so it builds on the Yocto/meta-panda SDK
+# gcc-12 as well as newer host gcc.
 lqr_bridge.o: lqr_bridge.cpp
-	$(CXX) -std=c++26 -O3 -g -I$(TOP)/../include $(CPPFLAGS) -c -o $@ $<
+	$(CXX) -std=c++2b -O3 -g -I$(TOP)/../include $(CPPFLAGS) -c -o $@ $<
 
 # Pass the git version through to version
 version.o: CPPFLAGS += -DGIT_VERSION='"$(GIT_VERSION)"'
@@ -105,10 +107,15 @@ version.o: FORCE
 FORCE:
 .phony: FORCE
 
-# C++ bridge sources compiled into the server (in-process gain thread).
+# C++ bridge sources compiled into the server.
 server: $(SRCS:.c=.o) hw_hardware.o lqr_bridge.o
 	$(TOP)/server/check_global_vars $(TOP)/server/global_vars .
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+ifdef BOARD_STRIP
+	$(CROSS_COMPILE)objcopy --only-keep-debug $@ $@.debug
+	$(CROSS_COMPILE)strip --strip-debug $@
+	$(CROSS_COMPILE)objcopy --add-gnu-debuglink=$@.debug $@
+endif
 
 sim_server: $(SRCS:.c=.o) sw_hardware.o sim_hardware.o lqr_bridge.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@

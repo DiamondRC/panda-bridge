@@ -50,3 +50,10 @@ LDLIBS += -lpthread
 LDLIBS += -lrt
 LDLIBS += -lm
 LDLIBS += -lstdc++
+
+# The C++26 bridge needs gcc-14 whose glibc is newer than the board's (2.30).
+# Thus, link fully static so the binary carries its own glibc + libstdc++ +
+# libgcc and runs regardless of the board's runtime.
+ifdef BOARD_STATIC
+LDFLAGS += -static
+endif

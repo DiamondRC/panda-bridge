@@ -20,6 +20,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s "/opt/${ARM_TC}" /opt/arm-cross \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH=/opt/arm-cross/bin:$PATH
+# `./dev '<cmd>'` runs a login shell (bash -lc), which resets PATH via
+# /etc/profile and drops the ENV above - re-add the toolchain there too so
+# the cross compiler is visible without a manual export.
+RUN printf 'export PATH=/opt/arm-cross/bin:$PATH\n' > /etc/profile.d/arm-cross.sh
 
 # Sanity: the cross g++ must speak C++26, else the board build is pointless.
 RUN printf 'int main(){}\n' > /tmp/p.cpp \
