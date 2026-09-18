@@ -1,0 +1,519 @@
+*METADATA
+    APPNAME             constant =pandabox-lqr
+    DESIGN              string
+    LAYOUT              multiline
+    EXPORTS             multiline
+    LABEL_TTLIN1        string
+    LABEL_TTLIN2        string
+    LABEL_TTLIN3        string
+    LABEL_TTLIN4        string
+    LABEL_TTLIN5        string
+    LABEL_TTLIN6        string
+    LABEL_TTLOUT1       string
+    LABEL_TTLOUT2       string
+    LABEL_TTLOUT3       string
+    LABEL_TTLOUT4       string
+    LABEL_TTLOUT5       string
+    LABEL_TTLOUT6       string
+    LABEL_TTLOUT7       string
+    LABEL_TTLOUT8       string
+    LABEL_TTLOUT9       string
+    LABEL_TTLOUT10      string
+    LABEL_LVDSIN1       string
+    LABEL_LVDSIN2       string
+    LABEL_LVDSOUT1      string
+    LABEL_LVDSOUT2      string
+    LABEL_INENC1        string
+    LABEL_INENC2        string
+    LABEL_INENC3        string
+    LABEL_INENC4        string
+    LABEL_OUTENC1       string
+    LABEL_OUTENC2       string
+    LABEL_OUTENC3       string
+    LABEL_OUTENC4       string
+    LABEL_PCAP1         string
+    LABEL_SYSTEM1       string
+    LABEL_BITS1         string
+    LABEL_CALC1         string
+    LABEL_CALC2         string
+    LABEL_CLOCK1        string
+    LABEL_CLOCK2        string
+    LABEL_COUNTER1      string
+    LABEL_COUNTER2      string
+    LABEL_COUNTER3      string
+    LABEL_COUNTER4      string
+    LABEL_COUNTER5      string
+    LABEL_COUNTER6      string
+    LABEL_COUNTER7      string
+    LABEL_COUNTER8      string
+    LABEL_DIV1          string
+    LABEL_DIV2          string
+    LABEL_FILTER1       string
+    LABEL_FILTER2       string
+    LABEL_LUT1          string
+    LABEL_LUT2          string
+    LABEL_LUT3          string
+    LABEL_LUT4          string
+    LABEL_LUT5          string
+    LABEL_LUT6          string
+    LABEL_LUT7          string
+    LABEL_LUT8          string
+    LABEL_PCOMP1        string
+    LABEL_PCOMP2        string
+    LABEL_PULSE1        string
+    LABEL_PULSE2        string
+    LABEL_PULSE3        string
+    LABEL_PULSE4        string
+    LABEL_SEQ1          string
+    LABEL_SEQ2          string
+    LABEL_PGEN1         string
+    LABEL_PGEN2         string
+    LABEL_SRGATE1       string
+    LABEL_SRGATE2       string
+    LABEL_SRGATE3       string
+    LABEL_SRGATE4       string
+    LABEL_LQR1          string
+
+TTLIN[6]
+    TERM                param enum
+        0   High-Z
+        1   50-Ohm
+    VAL                 bit_out
+
+TTLOUT[10]
+    VAL                 bit_mux
+
+LVDSIN[2]
+    VAL                 bit_out
+
+LVDSOUT[2]
+    VAL                 bit_mux
+
+INENC[4]
+    CLK                 bit_mux
+    PROTOCOL            param enum
+        0   Quadrature
+        1   SSI
+        2   BISS
+        3   enDat
+    ENCODING            param enum
+        0   Unsigned Binary
+        1   Unsigned Gray
+        2   Signed Binary
+        3   Signed Gray
+    CLK_SRC             param enum
+        0   Internally Generated
+        1   From CLK
+    CLK_PERIOD          param time
+    FRAME_PERIOD        param time
+    BITS                param uint 63
+    LSB_DISCARD         param uint 31
+    MSB_DISCARD         param uint 31
+    SETP                write int
+    RST_ON_Z            param bit
+    A                   bit_out
+    B                   bit_out
+    Z                   bit_out
+    DATA                bit_out
+    CONN                bit_out
+    HOMED               read bit
+    HEALTH              read enum
+        0   OK
+        1   Linkup error (=not CONN)
+        2   Timeout error (for BISS, SSI)
+        3   CRC error (for BISS)
+        4   Error bit active (for BISS)
+        5   ENDAT not implemented
+        6   Protocol readback error
+    VAL                 pos_out 1 0
+    DCARD_TYPE          read enum
+        0   DCARD id 0
+        1   Encoder Control
+        2   DCARD id 2
+        3   Encoder Monitor
+        4   DCARD id 3
+        5   DCARD id 4
+        6   DCARD id 5
+        7   Unplugged
+
+OUTENC[4]
+    ENABLE              bit_mux
+    GENERATOR_ERROR     param enum
+        0   No
+        1   BISS frame error bit
+    A                   bit_mux
+    B                   bit_mux
+    Z                   bit_mux
+    DATA                bit_mux
+    PROTOCOL            param enum
+        0   Quadrature
+        1   SSI
+        2   BISS
+        3   enDat
+        4   ABZ Passthrough
+        5   DATA Passthrough
+    ENCODING            param enum
+        0   Unsigned Binary
+        1   Unsigned Gray
+        2   Signed Binary
+        3   Signed Gray
+    BITS                param uint 32
+    QPERIOD             param time
+    CLK                 bit_out
+    VAL                 pos_mux
+    HEALTH              read enum
+        0   OK
+        1   Biss timeout error (did not received right number of sck for biss frame)
+        2   ENDAT not implemented
+        3   OUTENC unused (MONITOR mode)
+        4   Protocol readback error
+    DCARD_TYPE          read enum
+        0   DCARD id 0
+        1   Encoder Control
+        2   DCARD id 2
+        3   Encoder Monitor
+        4   DCARD id 3
+        5   DCARD id 4
+        6   DCARD id 5
+        7   Unplugged
+    QSTATE              read enum
+        0   Disabled
+        1   At position
+        2   Slewing
+
+PCAP[1]
+    ENABLE              bit_mux
+    GATE                bit_mux
+    TRIG                bit_mux
+    TRIG_EDGE           param enum
+        0   Rising
+        1   Falling
+        2   Either
+    SHIFT_SUM           param uint 8
+    ACTIVE              bit_out
+    TS_START            ext_out timestamp
+    TS_END              ext_out timestamp
+    TS_TRIG             ext_out timestamp
+    GATE_DURATION       ext_out samples
+    BITS0               ext_out bits 0
+    BITS1               ext_out bits 1
+    BITS2               ext_out bits 2
+    BITS3               ext_out bits 3
+    HEALTH              read enum
+        0   OK
+        1   Capture events too close together
+        2   Samples overflow
+
+SYSTEM[1]
+    TEMP_PSU            read int
+    TEMP_SFP            read int
+    TEMP_ENC_L          read int
+    TEMP_PICO           read int
+    TEMP_ENC_R          read int
+    TEMP_ZYNQ           read scalar 0.001 0 deg
+    ALIM_12V0           read scalar 0.001486252 0
+    PICO_5V0            read scalar 0.000611546 0
+    IO_5V0              read scalar 0.000609385 0
+    SFP_3V3             read scalar 0.000384078 0
+    FMC_15VN            read scalar 0.003533569 0
+    FMC_15VP            read scalar 0.001847291 0
+    ENC_24V             read scalar 0.002854764 0
+    FMC_12V             read scalar 0.001494582 0
+    PLL_LOCKED          read
+    CLOCK_SOURCE        param enum
+        0   int clock
+        1   sma clock
+        2   sfp3 recovered clock
+    TIMESTAMP_SOURCE    param enum
+        0   None
+        1   sfp1
+        2   sfp2
+        3   sfp3
+    EXT_CLOCK_FREQ      read
+    VCCINT              read scalar 0.001 0 deg
+    CLK_SEL_STAT        read enum
+        0   int clock
+        1   sma clock
+        2   sfp3 recovered clock
+    HEALTH              read enum
+        0   OK
+        1   Clock select error
+
+BITS[1]
+    A                   param bit
+    B                   param bit
+    C                   param bit
+    D                   param bit
+    OUTA                bit_out
+    OUTB                bit_out
+    OUTC                bit_out
+    OUTD                bit_out
+
+CALC[2]
+    INPA                pos_mux
+    INPB                pos_mux
+    INPC                pos_mux
+    INPD                pos_mux
+    TYPEA               param enum
+        0   Value
+        1   -Value
+    TYPEB               param enum
+        0   Value
+        1   -Value
+    TYPEC               param enum
+        0   Value
+        1   -Value
+    TYPED               param enum
+        0   Value
+        1   -Value
+    SHIFT               param uint 2
+    OUT                 pos_out 1 0
+
+CLOCK[2]
+    ENABLE              bit_mux
+    PERIOD              param time
+    WIDTH               param time
+    OUT                 bit_out
+
+COUNTER[8]
+    ENABLE              bit_mux
+    TRIG                bit_mux
+    DIR                 bit_mux
+    TRIG_EDGE           param enum
+        0   Rising
+        1   Falling
+        2   Either
+    OUT_MODE            param enum
+        0   On-Change
+        1   On-Disable
+    SET                 param int
+    START               param int
+    STEP                param
+    MAX                 param int
+    MIN                 param int
+    CARRY               bit_out
+    OUT                 pos_out 1 0
+
+DIV[2]
+    ENABLE              bit_mux
+    INP                 bit_mux
+    DIVISOR             param
+    FIRST_PULSE         param enum
+        0   OutN
+        1   OutD
+    OUTD                bit_out
+    OUTN                bit_out
+    COUNT               read
+
+FILTER[2]
+    ENABLE              bit_mux
+    TRIG                bit_mux
+    INP                 pos_mux
+    MODE                param enum
+        0   difference
+        1   average
+    READY               bit_out
+    OUT                 pos_out 1 0
+    HEALTH              read enum
+        0   OK
+        1   Accumulator overflow
+        2   Divider retrigger
+
+LUT[8]
+    INPA                bit_mux
+    INPB                bit_mux
+    INPC                bit_mux
+    INPD                bit_mux
+    INPE                bit_mux
+    TYPEA               param enum
+        0   Input-Level
+        1   Pulse-On-Rising-Edge
+        2   Pulse-On-Falling-Edge
+        3   Pulse-On-Either-Edge
+    TYPEB               param enum
+        0   Input-Level
+        1   Pulse-On-Rising-Edge
+        2   Pulse-On-Falling-Edge
+        3   Pulse-On-Either-Edge
+    TYPEC               param enum
+        0   Input-Level
+        1   Pulse-On-Rising-Edge
+        2   Pulse-On-Falling-Edge
+        3   Pulse-On-Either-Edge
+    TYPED               param enum
+        0   Input-Level
+        1   Pulse-On-Rising-Edge
+        2   Pulse-On-Falling-Edge
+        3   Pulse-On-Either-Edge
+    TYPEE               param enum
+        0   Input-Level
+        1   Pulse-On-Rising-Edge
+        2   Pulse-On-Falling-Edge
+        3   Pulse-On-Either-Edge
+    FUNC                param lut
+    OUT                 bit_out
+
+PCOMP[2]
+    ENABLE              bit_mux
+    INP                 pos_mux
+    PRE_START           param int
+    START               param int
+    WIDTH               param int
+    STEP                param int
+    PULSES              param
+    RELATIVE            param enum
+        0   Absolute
+        1   Relative
+    DIR                 param enum
+        0   Positive
+        1   Negative
+        2   Either
+    ACTIVE              bit_out
+    OUT                 bit_out
+    HEALTH              read enum
+        0   OK
+        1   Position jumped by more than STEP
+        2   Can't guess DIR when RELATIVE and PRE_START=0 and START=0
+    PRODUCED            read
+    STATE               read enum
+        0   WAIT_ENABLE
+        1   WAIT_DIR
+        2   WAIT_PRE_START
+        3   WAIT_RISING
+        4   WAIT_FALLING
+
+PULSE[4]
+    ENABLE              bit_mux
+    TRIG                bit_mux
+    DELAY               time
+    WIDTH               time
+    PULSES              param
+    STEP                time
+    TRIG_EDGE           param enum
+        0   Rising
+        1   Falling
+        2   Either
+    OUT                 bit_out
+    QUEUED              read uint 1023
+    DROPPED             read
+
+SEQ[2]
+    ENABLE              bit_mux
+    BITA                bit_mux
+    BITB                bit_mux
+    BITC                bit_mux
+    POSA                pos_mux
+    POSB                pos_mux
+    POSC                pos_mux
+    TABLE               table 4
+        15:0                REPEATS
+        19:16               TRIGGER enum
+            0 Immediate
+            1 BITA=0
+            2 BITA=1
+            3 BITB=0
+            4 BITB=1
+            5 BITC=0
+            6 BITC=1
+            7 POSA>=POSITION
+            8 POSA<=POSITION
+            9 POSB>=POSITION
+            10 POSB<=POSITION
+            11 POSC>=POSITION
+            12 POSC<=POSITION
+        63:32               POSITION int
+        95:64               TIME1
+        20:20               OUTA1
+        21:21               OUTB1
+        22:22               OUTC1
+        23:23               OUTD1
+        24:24               OUTE1
+        25:25               OUTF1
+        127:96              TIME2
+        26:26               OUTA2
+        27:27               OUTB2
+        28:28               OUTC2
+        29:29               OUTD2
+        30:30               OUTE2
+        31:31               OUTF2
+    PRESCALE            param time
+    REPEATS             param
+    ACTIVE              bit_out
+    OUTA                bit_out
+    OUTB                bit_out
+    OUTC                bit_out
+    OUTD                bit_out
+    OUTE                bit_out
+    OUTF                bit_out
+    TABLE_REPEAT        read
+    TABLE_LINE          read
+    LINE_REPEAT         read
+    STATE               read enum
+        0   UNREADY
+        1   WAIT_ENABLE
+        2   WAIT_TRIGGER
+        3   PHASE1
+        4   PHASE2
+    HEALTH              read enum
+        0   OK
+        1   DMA underrun
+        2   Not ready for table
+
+PGEN[2]
+    ENABLE              bit_mux
+    TRIG                bit_mux
+    TABLE               table 1
+        31:0                POSITION int
+    REPEATS             param
+    ACTIVE              bit_out
+    OUT                 pos_out 1 0
+    STATE               read enum
+        0   UNREADY
+        1   WAIT_ENABLE
+        2   RUNNING
+    HEALTH              read enum
+        0   OK
+        1   DMA underrun
+        2   Not ready for table
+
+SRGATE[4]
+    ENABLE              bit_mux
+    SET                 bit_mux
+    RST                 bit_mux
+    WHEN_DISABLED       param enum
+        0   Set output low
+        1   Set output high
+        2   Keep current output
+    SET_EDGE            param enum
+        0   Rising
+        1   Falling
+        2   Either
+    RST_EDGE            param enum
+        0   Rising
+        1   Falling
+        2   Either
+    FORCE_SET           write action
+    FORCE_RST           write action
+    OUT                 bit_out
+
+LQR[1]
+    INIT                bit_mux
+    POS0                pos_mux
+    POS1                pos_mux
+    POS2                pos_mux
+    SP0                 pos_mux
+    SP1                 pos_mux
+    SP2                 pos_mux
+    SV0                 pos_mux
+    SV1                 pos_mux
+    SV2                 pos_mux
+    GAINS               table 1
+        31:0                K int
+    COMMIT              write action
+    GEN                 read
+    EXPORT_STATUS       read
+    U0                  pos_out 1 0
+    U1                  pos_out 1 0
+    U2                  pos_out 1 0
+    U_VALID             bit_out
+

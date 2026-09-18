@@ -1,0 +1,351 @@
+# Register interface definition
+
+# Kernel driver compatibility version. This must be updated when the register
+# set in *DRV changes or if the FPGA changes in any other way that requires a
+# driver change. The driver will refuse to load if this does not match the
+# value returned by *DRV.DRV_COMPAT_VERSION
+DRIVER_COMPAT_VERSION = 1
+
+# PandA Blocks compatibility version. This is checked by the server when
+# loading the registers file, and should be updated when the interface to the
+# server has changed in an incompatible way.
+BLOCKS_COMPAT_VERSION = 0
+
+
+# This special register block is not present in the config file and contains
+# fixed register definitions used in the hardware interface.
+*REG        0
+    #
+    # FPGA Version and Build Identification Values
+    #
+    FPGA_VERSION            0
+    FPGA_BUILD              1
+    USER_VERSION            2
+    # Bit bus readout registers: first write to BIT_READ_RST to capture a
+    # snapshot of the bit bus and its changes, then read BIT_READ_VALUE 8 times
+    # to read out bit bus values and change flags.
+    BIT_READ_RST            3
+    BIT_READ_VALUE          4
+
+    # Position bus readout registers: first write to POS_READ_RST to snapshot
+    # the position bus and the change set, then read POS_READ_VALUE 32 times to
+    # read out the positions, and finally read the change set from
+    # POS_READ_CHANGES.
+    POS_READ_RST            5
+    POS_READ_VALUE          6
+    POS_READ_CHANGES        7
+
+    # The capture set is written by first writing to PCAP_START_WRITE and then
+    # writing the required changes to PCAP_WRITE
+    PCAP_START_WRITE        8
+    PCAP_WRITE              9
+
+    # Hardware timestamps
+    # This starts at unix epoch (UTC)
+    PCAP_TS_SEC             opt 10
+    # Ticks since PCAP_TS_SEC was updated
+    PCAP_TS_TICKS           opt 11
+
+    # Position capture control
+    PCAP_ARM                13
+    PCAP_DISARM             14
+
+    # FPGA Capabilities Value
+    FPGA_CAPABILITIES       15
+
+    # Range of MAC addresses
+    MAC_ADDRESS_BASE        16 .. 23
+
+    # Nominal clock.  If this register is non zero the value returned will be
+    # used as the reported clock frequency in Hz, otherwise the standard
+    # frequency of 125 MHz will be reported and used.
+    NOMINAL_CLOCK           24
+
+    # table DMA interrupts bitset. It indicates each interrupt signaled since
+    # last read, top 16 bits indicate the done event(an instance finished
+    # operation), bottom 16 bits indicates the ready event (an instance became
+    # ready to accept a buffer)
+    TABLE_IRQ_STATUS        25
+
+
+# These registers are used by the kernel driver to read the data capture stream.
+# This block is not used by the server, but is here for documentation and other
+# automated tools.
+*DRV        1
+    # This register is used to reset DMA engine.
+    PCAP_DMA_RESET          0
+    # This register is used to initialise DMA engine with first set of
+    # addresses.
+    PCAP_DMA_START          1
+    # The physical address of each DMA block is written to this register.
+    PCAP_DMA_ADDR           2
+    # This register configures the maximum interval between capture interrupts
+    PCAP_TIMEOUT            3
+    # Interrupt status and acknowledge
+    PCAP_IRQ_STATUS         4
+    # DMA block size in bytes
+    PCAP_BLOCK_SIZE         6
+
+    # Kernel driver compatiblity version check register.  The value in this
+    # register must match DRIVER_COMPAT_VERSION.
+    COMPAT_VERSION          7
+
+TTLIN               2
+    TERM                0
+    VAL                 0 1 2 3 4 5
+
+TTLOUT              3
+    VAL                 2 3
+
+LVDSIN              4
+    VAL                 6 7
+
+LVDSOUT             5
+    VAL                 2 3
+
+INENC               6
+    CLK                 0 1
+    PROTOCOL            2
+    ENCODING            3
+    CLK_SRC             4
+    CLK_PERIOD          5
+    FRAME_PERIOD        6
+    BITS                7
+    LSB_DISCARD         8
+    MSB_DISCARD         9
+    SETP                10
+    RST_ON_Z            11
+    A                   8 9 10 11
+    B                   12 13 14 15
+    Z                   16 17 18 19
+    DATA                20 21 22 23
+    CONN                24 25 26 27
+    HOMED               12
+    HEALTH              13
+    VAL                 0 1 2 3
+    DCARD_TYPE          14
+
+OUTENC              7
+    ENABLE              0 1
+    GENERATOR_ERROR     2
+    A                   3 4
+    B                   5 6
+    Z                   7 8
+    DATA                9 10
+    PROTOCOL            11
+    ENCODING            12
+    BITS                13
+    QPERIOD             14
+    CLK                 28 29 30 31
+    VAL                 15
+    HEALTH              16
+    DCARD_TYPE          17
+    QSTATE              18
+
+PCAP                8
+    ENABLE              0 1
+    GATE                2 3
+    TRIG                4 5
+    TRIG_EDGE           6
+    SHIFT_SUM           7
+    ACTIVE              32
+    TS_START            0 1
+    TS_END              2 3
+    TS_TRIG             4 5
+    GATE_DURATION       6
+    BITS0               7
+    BITS1               8
+    BITS2               9
+    BITS3               10
+    HEALTH              8
+
+SYSTEM              9 system
+    TEMP_PSU            0
+    TEMP_SFP            1
+    TEMP_ENC_L          2
+    TEMP_PICO           3
+    TEMP_ENC_R          4
+    TEMP_ZYNQ           X in_temp0
+    ALIM_12V0           5
+    PICO_5V0            6
+    IO_5V0              7
+    SFP_3V3             8
+    FMC_15VN            9
+    FMC_15VP            10
+    ENC_24V             11
+    FMC_12V             12
+    PLL_LOCKED          13
+    CLOCK_SOURCE        14
+    TIMESTAMP_SOURCE    15
+    EXT_CLOCK_FREQ      16
+    VCCINT              X in_voltage0_vccint
+    CLK_SEL_STAT        17
+    HEALTH              18
+
+BITS                10
+    A                   0
+    B                   1
+    C                   2
+    D                   3
+    OUTA                33
+    OUTB                34
+    OUTC                35
+    OUTD                36
+
+CALC                11
+    INPA                0
+    INPB                1
+    INPC                2
+    INPD                3
+    TYPEA               4
+    TYPEB               5
+    TYPEC               6
+    TYPED               7
+    SHIFT               8
+    OUT                 4 5
+
+CLOCK               12
+    ENABLE              0 1
+    PERIOD              2
+    WIDTH               3
+    OUT                 37 38
+
+COUNTER             13
+    ENABLE              0 1
+    TRIG                2 3
+    DIR                 4 5
+    TRIG_EDGE           6
+    OUT_MODE            7
+    SET                 8
+    START               9
+    STEP                10
+    MAX                 11
+    MIN                 12
+    CARRY               39 40 41 42 43 44 45 46
+    OUT                 6 7 8 9 10 11 12 13
+
+DIV                 14
+    ENABLE              0 1
+    INP                 2 3
+    DIVISOR             4
+    FIRST_PULSE         5
+    OUTD                47 48
+    OUTN                49 50
+    COUNT               6
+
+FILTER              15
+    ENABLE              0 1
+    TRIG                2 3
+    INP                 4
+    MODE                5
+    READY               51 52
+    OUT                 14 15
+    HEALTH              6
+
+LUT                 16
+    INPA                0 1
+    INPB                2 3
+    INPC                4 5
+    INPD                6 7
+    INPE                8 9
+    TYPEA               10
+    TYPEB               11
+    TYPEC               12
+    TYPED               13
+    TYPEE               14
+    FUNC                15
+    OUT                 53 54 55 56 57 58 59 60
+
+PCOMP               17
+    ENABLE              0 1
+    INP                 2
+    PRE_START           3
+    START               4
+    WIDTH               5
+    STEP                6
+    PULSES              7
+    RELATIVE            8
+    DIR                 9
+    ACTIVE              61 62
+    OUT                 63 64
+    HEALTH              10
+    PRODUCED            11
+    STATE               12
+
+PULSE               18
+    ENABLE              0 1
+    TRIG                2 3
+    DELAY               4 5
+    WIDTH               6 7
+    PULSES              8
+    STEP                9 10
+    TRIG_EDGE           11
+    OUT                 65 66 67 68
+    QUEUED              12
+    DROPPED             13
+
+SEQ                 19
+    ENABLE              0 1
+    BITA                2 3
+    BITB                4 5
+    BITC                6 7
+    POSA                8
+    POSB                9
+    POSC                10
+    TABLE               long 2^10 8 11 12
+    PRESCALE            13
+    REPEATS             14
+    ACTIVE              69 70
+    OUTA                71 72
+    OUTB                73 74
+    OUTC                75 76
+    OUTD                77 78
+    OUTE                79 80
+    OUTF                81 82
+    TABLE_REPEAT        15
+    TABLE_LINE          16
+    LINE_REPEAT         17
+    STATE               18
+    HEALTH              19
+
+PGEN                20
+    ENABLE              0 1
+    TRIG                2 3
+    TABLE               long 2^10 8 4 5
+    REPEATS             6
+    ACTIVE              83 84
+    OUT                 16 17
+    STATE               7
+    HEALTH              8
+
+SRGATE              21
+    ENABLE              0 1
+    SET                 2 3
+    RST                 4 5
+    WHEN_DISABLED       6
+    SET_EDGE            7
+    RST_EDGE            8
+    FORCE_SET           9
+    FORCE_RST           10
+    OUT                 85 86 87 88
+
+LQR                 22
+    INIT                0 1
+    POS0                2
+    POS1                3
+    POS2                4
+    SP0                 5
+    SP1                 6
+    SP2                 7
+    SV0                 8
+    SV1                 9
+    SV2                 10
+    GAINS               short 57 11 12 13
+    COMMIT              14
+    GEN                 15
+    EXPORT_STATUS       16
+    U0                  18
+    U1                  19
+    U2                  20
+    U_VALID             89
+

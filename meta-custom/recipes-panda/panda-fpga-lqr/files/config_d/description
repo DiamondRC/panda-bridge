@@ -1,0 +1,278 @@
+TTLIN               TTL input
+    TERM                Select TTL input termination
+    VAL                 TTL input value
+
+TTLOUT              TTL output
+    VAL                 TTL output value
+
+LVDSIN              LVDS input
+    VAL                 LVDS input value
+
+LVDSOUT             LVDS output
+    VAL                 LVDS output value
+
+INENC               Input encoder
+    CLK                 Clock output to slave encoder
+    PROTOCOL            Type of absolute/incremental protocol
+    ENCODING            Position encoding (for absolute encoders)
+    CLK_SRC             Bypass/Pass Through encoder signals
+    CLK_PERIOD          Clock rate
+    FRAME_PERIOD        Frame rate
+    BITS                Number of bits
+    LSB_DISCARD         Number of LSB bits to discard
+    MSB_DISCARD         Number of MSB bits to discard
+    SETP                Set point
+    RST_ON_Z            Zero position on Z rising edge
+    A                   Quadrature A if in incremental mode
+    B                   Quadrature B if in incremental mode
+    Z                   Z index channel if in incremental mode
+    DATA                Data input from slave encoder
+    CONN                Signal detected
+    HOMED               Quadrature homed status
+    HEALTH              Table status
+    VAL                 Current position
+    DCARD_TYPE          Daughter card jumper mode
+
+OUTENC              Output encoder
+    ENABLE              Halt of falling edge, reset and enable on rising
+    GENERATOR_ERROR     generate error on output
+    A                   Input for A (only straight through)
+    B                   Input for B (only straight through)
+    Z                   Input for Z (only straight through)
+    DATA                Data output to master encoder
+    PROTOCOL            Type of absolute/incremental protocol
+    ENCODING            Position encoding (for absolute encoders)
+    BITS                Number of bits
+    QPERIOD             Quadrature prescaler
+    CLK                 Clock input from master encoder
+    VAL                 Input for position (all other protocols)
+    HEALTH              Table status
+    DCARD_TYPE          Daughter card jumper mode
+    QSTATE              Quadrature state
+
+PCAP                Position capture control
+    ENABLE              After arm, when high start capture, when low disarm
+    GATE                After enable, only process gated values if high
+    TRIG                On selected edge capture current value and gated data
+    TRIG_EDGE           Which edge of capture input signal triggers capture
+    SHIFT_SUM           Shift sum/samples data, use if > 2**32 samples required in sum/average
+    ACTIVE              Data capture in progress
+    TS_START            Timestamp of first gate high in current capture relative to enable
+    TS_END              Timestamp of last gate high +1 in current capture relative to enable
+    TS_TRIG             Timestamp of capture event relative to enable
+    GATE_DURATION       Number of gated samples in the current capture
+    BITS0               Quadrant 0 of bit_bus
+    BITS1               Quadrant 1 of bit_bus
+    BITS2               Quadrant 2 of bit_bus
+    BITS3               Quadrant 3 of bit_bus
+    HEALTH              Was last capture successful?
+
+SYSTEM              System control FPGA
+    TEMP_PSU            On-board temperature [Power Supply]
+    TEMP_SFP            On-board temperature [SFP]
+    TEMP_ENC_L          On-board temperature [Left Encoder]
+    TEMP_PICO           On-board temperature [Picozed]
+    TEMP_ENC_R          On-board temperature [Right Encoder]
+    TEMP_ZYNQ           On-board zynq temperature
+    ALIM_12V0           On-board voltage sensor values
+    PICO_5V0            On-board voltage sensor values
+    IO_5V0              On-board voltage sensor values
+    SFP_3V3             On-board voltage sensor values
+    FMC_15VN            On-board voltage sensor values
+    FMC_15VP            On-board voltage sensor values
+    ENC_24V             On-board voltage sensor values
+    FMC_12V             On-board voltage sensor values
+    PLL_LOCKED          PLL locked for SMA external clock
+    CLOCK_SOURCE        External sma and event receiver clock enables
+    TIMESTAMP_SOURCE    Source for hardware timestamp
+    EXT_CLOCK_FREQ      External clock freq
+    VCCINT              On-board voltage sensor
+    CLK_SEL_STAT        Clock Source Read-back
+    HEALTH              Error status
+
+BITS                Soft inputs and constant bits
+    A                   The value that output A should take
+    B                   The value that output B should take
+    C                   The value that output C should take
+    D                   The value that output D should take
+    OUTA                The value of A on the bit bus
+    OUTB                The value of B on the bit bus
+    OUTC                The value of C on the bit bus
+    OUTD                The value of D on the bit bus
+
+CALC                Position calc
+    INPA                Position input A
+    INPB                Position input B
+    INPC                Position input C
+    INPD                Position input D
+    TYPEA               Source of the value of A for calculation
+    TYPEB               Source of the value of B for calculation
+    TYPEC               Source of the value of B for calculation
+    TYPED               Source of the value of B for calculation
+    SHIFT               Number of places to right shift calculation result before output
+    OUT                 Position output
+
+CLOCK               Configurable clocks
+    ENABLE              Halt and reset on falling edge, enable on rising
+    PERIOD              Period of clock output
+    WIDTH               Width of clock output
+    OUT                 Clock output
+
+COUNTER             Up/Down pulse counter
+    ENABLE              Halt on falling edge, reset and enable on rising
+    TRIG                Rising edge ticks the counter up/down by STEP
+    DIR                 Up/Down direction (0 = Up, 1 = Down)
+    TRIG_EDGE           INP trigger edge
+    OUT_MODE            Counter OUT update mode (on internal counter value change or on ENABLE falling edge)
+    SET                 set current value of a counter
+    START               Counter start value
+    STEP                Up/Down step value
+    MAX                 Rollover value
+    MIN                 Value to which counter should rollover to
+    CARRY               Internal counter overflow status
+    OUT                 Current counter value
+
+DIV                 Pulse divider
+    ENABLE              Reset on falling edge, enable on rising
+    INP                 Input pulse train
+    DIVISOR             Divisor value
+    FIRST_PULSE         Where to send first pulse
+    OUTD                Divided pulse output
+    OUTN                Non-divided pulse output
+    COUNT               Internal counter value
+
+FILTER              Filter block modes are Difference and Divider
+    ENABLE              Enable event
+    TRIG                Trigger event
+    INP                 Input data
+    MODE                Select operation mode
+    READY               Output Ready
+    OUT                 Output data
+    HEALTH              Error
+
+LUT                 Lookup table
+    INPA                Input A
+    INPB                Input B
+    INPC                Input C
+    INPD                Input D
+    INPE                Input E
+    TYPEA               Source of the value of A for calculation
+    TYPEB               Source of the value of B for calculation
+    TYPEC               Source of the value of C for calculation
+    TYPED               Source of the value of D for calculation
+    TYPEE               Source of the value of E for calculation
+    FUNC                Input func
+    OUT                 Lookup table output
+
+PCOMP               Position compare
+    ENABLE              Stop on falling edge, reset and enable on rising edge
+    INP                 Position data from position-data bus
+    PRE_START           INP must be this far from START before waiting for START
+    START               Pulse absolute/relative start position value
+    WIDTH               The relative distance between a rising and falling edge
+    STEP                The relative distance between successive rising edges
+    PULSES              The number of pulses to produce, 0 means infinite
+    RELATIVE            If 1 then START is relative to the position of INP at enable
+    DIR                 Direction to apply all relative offsets to
+    ACTIVE              Active output is high while block is in operation
+    OUT                 Output pulse train
+    HEALTH              Error details if anything goes wrong
+    PRODUCED            The number of pulses produced
+    STATE               The internal statemachine state
+
+PULSE               One-shot pulse delay and stretch
+    ENABLE              Reset on falling edge, enable on rising
+    TRIG                Input pulse train
+    DELAY               Output pulse delay (0 for no delay)
+    WIDTH               Output pulse width (0 for input pulse width)
+    PULSES              The number of pulses to produce on each trigger, 0 means 1
+    STEP                If pulses > 1, the time between successive pulse rising edges
+    TRIG_EDGE           INP trigger edge
+    OUT                 Output pulse train
+    QUEUED              Length of the delay queue
+    DROPPED             Number of pulses not produced because of an ERR condition
+
+SEQ                 Sequencer
+    ENABLE              Stop on falling edge, reset and enable on rising edge
+    BITA                BITA for optional trigger condition
+    BITB                BITB for optional trigger condition
+    BITC                BITC for optional trigger condition
+    POSA                POSA for optional trigger condition
+    POSB                POSB for optional trigger condition
+    POSC                POSC for optional trigger condition
+    TABLE               Sequencer table of lines
+        REPEATS             Number of times the line will repeat 
+        TRIGGER             The trigger condition to start the phases 
+        POSITION            The position that can be used in trigger condition 
+        TIME1               The time the optional phase 1 should take 
+        OUTA1               Output A value during phase 1 
+        OUTB1               Output B value during phase 1 
+        OUTC1               Output C value during phase 1 
+        OUTD1               Output D value during phase 1 
+        OUTE1               Output E value during phase 1 
+        OUTF1               Output F value during phase 1 
+        TIME2               The time the mandatory phase 2 should take 
+        OUTA2               Output A value during phase 2 
+        OUTB2               Output B value during phase 2 
+        OUTC2               Output C value during phase 2 
+        OUTD2               Output D value during phase 2 
+        OUTE2               Output E value during phase 2 
+        OUTF2               Output F value during phase 2 
+    PRESCALE            Prescalar for sequencer table times
+    REPEATS             Number of times the table will repeat
+    ACTIVE              Sequencer active flag
+    OUTA                Output A for phase outputs
+    OUTB                Output B for phase outputs
+    OUTC                Output C for phase outputs
+    OUTD                Output D for phase outputs
+    OUTE                Output E for phase outputs
+    OUTF                Output F for phase outputs
+    TABLE_REPEAT        Current iteration through the entire table
+    TABLE_LINE          Current line in the table that is active
+    LINE_REPEAT         Current iteration of the active table line
+    STATE               Internal state machine state
+    HEALTH              Was last run successful?
+
+PGEN                Position generator
+    ENABLE              Halt on falling edge, reset and enable on rising
+    TRIG                Trigger a sample to be produced
+    TABLE               Table of positions to be output
+        POSITION            The position to set OUT to on trigger 
+    REPEATS             Number of times the table will repeat
+    ACTIVE              High when output is being produced from the table
+    OUT                 Current sample
+    STATE               Internal state machine state
+    HEALTH              Table status
+
+SRGATE              Set reset gate
+    ENABLE              Whether to listen to SET/RST events
+    SET                 A falling/rising edge sets the output to 1
+    RST                 a falling/rising edge resets the output to 0
+    WHEN_DISABLED       What to do with the output when Enable is low
+    SET_EDGE            Output set edge
+    RST_EDGE            Output reset edge
+    FORCE_SET           Set output to 1
+    FORCE_RST           Reset output to 0
+    OUT                 output value
+
+LQR                 LQR / nonlinear state-feedback motion controller.
+    INIT                Reset / re-initialise the controller.
+    POS0                Axis 0 interferometer position (state input).
+    POS1                Axis 1 interferometer position (state input).
+    POS2                Axis 2 interferometer position (state input).
+    SP0                 Axis 0 position setpoint.
+    SP1                 Axis 1 position setpoint.
+    SP2                 Axis 2 position setpoint.
+    SV0                 Axis 0 velocity setpoint.
+    SV1                 Axis 1 velocity setpoint.
+    SV2                 Axis 2 velocity setpoint.
+    GAINS               Flattened K matrix (row-major, Q7.25), streamed into the inactive gain bank.
+    K                   One Q7.25 gain word. 
+    COMMIT              Swap the staged gains into the active bank
+    GEN                 Gain generation counter -- read to confirm a swap has landed.
+    EXPORT_STATUS       State export status (busy / error / overrun).
+    U0                  Axis 0 control output to DAC.
+    U1                  Axis 1 control output to DAC.
+    U2                  Axis 2 control output to DAC.
+    U_VALID             DAC latch strobe -- one pulse per completed control pass.
+
