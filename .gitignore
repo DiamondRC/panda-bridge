@@ -90,3 +90,7 @@ meta-custom/recipes-panda/panda-fpga-lqr/files/panda_top.bin
 # LQR boot.bin (FSBL + bitstream + u-boot): large, regenerated per synth. Local
 # for bring-up (panda-fpga-boot bbappend reads it via file://); not committed.
 meta-custom/recipes-panda/panda-fpga/files/boot/boot.bin
+
+# Flashable LQR image bundle (build output)
+/boot-pandabox-lqr/
+/boot-pandabox-lqr.tar.gz
