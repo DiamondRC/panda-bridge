@@ -1,0 +1,13 @@
+[Unit]
+Description=Steer device IRQs to CPU0, off the isolated LQR RT core
+# Runs after devices (and their IRQs) are up but before the servo loop starts.
+After=basic.target
+Before=panda-server.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/irq-affinity
+
+[Install]
+WantedBy=multi-user.target

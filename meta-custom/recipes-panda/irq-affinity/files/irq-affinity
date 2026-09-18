@@ -1,0 +1,16 @@
+#!/bin/sh
+# Steer every device IRQ onto CPU0, off the isolated RT core (CPU1) so
+# hard IRQ can't preempt the SCHED_FIFO LQR servo loop pinned there.
+#
+# Per-CPU (local timer, IPIs) and kernel-managed IRQs reject the affinity write
+# with EIO and are skipped - that is expected, not a failure.
+
+# Default mask for IRQs that register after this runs -> CPU0 (bit 0).
+echo 1 > /proc/irq/default_smp_affinity 2>/dev/null || true
+
+# Existing IRQs -> CPU0.
+for d in /proc/irq/*/smp_affinity_list; do
+    echo 0 > "$d" 2>/dev/null || true
+done
+
+echo "irq-affinity: device IRQs steered to CPU0"

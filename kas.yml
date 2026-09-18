@@ -1,4 +1,7 @@
-# kas build config for the LQR PandA image. Build with:
+# kas build config for the LQR PandA image.
+# TODO - hardcoded to my machine!
+#   DL_DIR=/scratch/fye77278/panda-yocto-cache/downloads \
+#   SSTATE_DIR=/scratch/fye77278/panda-yocto-cache/sstate \
 #   PATH="$PWD:$PATH" KAS_IMAGE_VERSION=4.8 kas-container build ./kas.yml
 
 header:
