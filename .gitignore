@@ -77,3 +77,9 @@ kernel/l2_lockdown/*.o
 kernel/l2_lockdown/.*.cmd
 kernel/l2_lockdown/modules.order
 kernel/l2_lockdown/Module.symvers
+# Yocto / kas build tree (meta-custom builds here via ./kas.yml)
+/sources/
+/meta-panda/
+/kas-container
+/boot-pandabox/
+/boot-pandabox.tar.gz

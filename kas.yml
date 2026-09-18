@@ -1,0 +1,18 @@
+# kas build config for the LQR PandA image. Build with:
+#   PATH="$PWD:$PATH" KAS_IMAGE_VERSION=4.8 kas-container build ./kas.yml
+
+header:
+  version: 16
+  includes:
+    - repo: meta-panda
+      file: kas.yml
+
+repos:
+  meta-panda:
+    url: https://github.com/PandABlocks/meta-panda
+    branch: main
+    commit: b47d9de0ff230780d00b76c031be08b392c80a66
+
+  # Our layer lives in this repo, in the meta-custom/ subdirectory.
+  meta-custom:
+    path: meta-custom
